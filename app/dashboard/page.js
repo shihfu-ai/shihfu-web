@@ -4,73 +4,173 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api, getStaff, clearAuth, isLoggedIn } from '../../lib/api';
 
+// ─── Constants ────────────────────────────────────────────────────
+
+// Fix #5 — generic entity config, not industry specific
 const ENTITY_CONFIG = {
-  veterinary: {
-    label: 'Pet Details', namePlaceholder: 'e.g. Champ',
-    typeLabel: 'Species', typeOptions: ['Dog','Cat','Bird','Rabbit','Guinea Pig','Other'],
-    breedLabel: 'Breed', breedPlaceholder: 'e.g. Labrador, Persian',
-    extraFields: [
-      { key:'gender',    label:'Gender',       type:'select', options:['Male','Female','Unknown'] },
-      { key:'dobOrYear', label:'Age / DOB',    type:'text',   placeholder:'e.g. 6 years or Jan 2019' },
-      { key:'microchip', label:'Microchip ID', type:'text',   placeholder:'Optional' },
-    ],
-  },
-  salon_beauty: {
-    label: 'Client Details', namePlaceholder: 'e.g. Priya',
-    typeLabel: 'Service Focus', typeOptions: ['Hair','Skin','Nails','Full Body','Bridal','Other'],
-    breedLabel: 'Hair Type / Skin Type', breedPlaceholder: 'e.g. Curly hair, Oily skin',
-    extraFields: [
-      { key:'gender',    label:'Gender',   type:'select', options:['Female','Male','Other'] },
-      { key:'dobOrYear', label:'Birthday', type:'text',   placeholder:'e.g. March 1990 (optional)' },
-    ],
-  },
-  auto_repair: {
-    label: 'Vehicle Details', namePlaceholder: 'e.g. MH12 AB1234',
-    typeLabel: 'Vehicle Type', typeOptions: ['Car','Two Wheeler','SUV','Commercial Vehicle','Other'],
-    breedLabel: 'Make & Model', breedPlaceholder: 'e.g. Maruti Swift, Honda Activa',
-    extraFields: [
-      { key:'dobOrYear',       label:'Year of Manufacture', type:'text',   placeholder:'e.g. 2019' },
-      { key:'registrationNo',  label:'Registration No.',   type:'text',   placeholder:'e.g. MH12 AB1234' },
-      { key:'fuelType',        label:'Fuel Type',          type:'select', options:['Petrol','Diesel','CNG','Electric','Hybrid'] },
-      { key:'insuranceExpiry', label:'Insurance Expiry',   type:'date',   placeholder:'' },
-    ],
-  },
+  label:           'Item / Entity Details',
+  namePlaceholder: 'e.g. Name or ID',
+  typeLabel:       'Type',
+  typeOptions:     ['Animal / Pet','Vehicle','Equipment','Property','Product','Person','Other'],
+  breedLabel:      'Description / Model',
+  breedPlaceholder:'e.g. Breed, model, or variant',
+  extraFields: [
+    { key:'gender',         label:'Gender / Category', type:'select', options:['Male','Female','Not Applicable','Other'] },
+    { key:'dobOrYear',      label:'Age / Year / DOB',  type:'text',   placeholder:'e.g. 3 years, 2019, Jan 2020' },
+    { key:'registrationNo', label:'ID / Registration', type:'text',   placeholder:'e.g. MH12 AB1234, Microchip ID' },
+    { key:'insuranceExpiry',label:'Expiry / Warranty',  type:'date',   placeholder:'' },
+    { key:'fuelType',       label:'Specification',     type:'text',   placeholder:'e.g. Petrol, Colour, Size' },
+  ],
 };
 
-const DEFAULT_ENTITY_CONFIG = {
-  label:'Entity Details', namePlaceholder:'e.g. Entity name',
-  typeLabel:'Type', typeOptions:['Person','Vehicle','Pet','Other'],
-  breedLabel:'Description', breedPlaceholder:'e.g. Details',
-  extraFields:[{ key:'dobOrYear', label:'Year / DOB', type:'text', placeholder:'Optional' }],
-};
-
-const SERVICE_TYPES = {
-  veterinary:   ['Annual Vaccination','Booster Shot','Grooming','Annual Checkup','Deworming','Dental Cleaning','Post-Surgery Follow-up','Emergency Visit','Other'],
-  salon_beauty: ['Hair Cut','Hair Color / Highlights','Keratin / Smoothening','Facial / Cleanup','Manicure / Pedicure','Waxing / Threading','Bridal Package','Hair Spa','Other'],
-  auto_repair:  ['Oil Change','Full Service','Tyre Rotation / Replacement','Battery Check / Replacement','AC Service & Gas Refill','Insurance Renewal','Brake Service','Engine Repair','Other'],
-};
-
-const FOLLOW_UP_OPTIONS = [
-  { label:'7 days',            value:'7'   },
-  { label:'14 days',           value:'14'  },
-  { label:'21 days (grooming)',value:'21'  },
-  { label:'30 days',           value:'30'  },
-  { label:'90 days',           value:'90'  },
-  { label:'180 days',          value:'180' },
-  { label:'365 days (annual)', value:'365' },
+const SERVICE_TYPES = [
+  'Consultation / Checkup',
+  'Maintenance / Service',
+  'Repair / Treatment',
+  'Installation / Setup',
+  'Inspection / Assessment',
+  'Cleaning / Grooming',
+  'Renewal / Subscription',
+  'Delivery / Pickup',
+  'Training / Demo',
+  'Follow-up Visit',
+  'Emergency Service',
+  'Other',
 ];
 
-// ── Shared blank customer/entity state ──────────────────────────
-const blankCustomer = { name:'', phone:'', email:'', city:'' };
-const blankEntity   = { name:'', entityType:'', breedOrModel:'', gender:'', dobOrYear:'', registrationNo:'', fuelType:'', insuranceExpiry:'', microchip:'' };
+const FOLLOW_UP_OPTIONS = [
+  { label:'7 days',             value:'7'   },
+  { label:'14 days',            value:'14'  },
+  { label:'21 days',            value:'21'  },
+  { label:'30 days (monthly)',  value:'30'  },
+  { label:'90 days (quarterly)',value:'90'  },
+  { label:'180 days (6 months)',value:'180' },
+  { label:'365 days (annual)',  value:'365' },
+];
 
+const blankCustomer = { name:'', phone:'', email:'', city:'' };
+const blankEntity   = { name:'', entityType:'', breedOrModel:'', gender:'', dobOrYear:'', registrationNo:'', fuelType:'', insuranceExpiry:'' };
+
+// ─── Shared styles at module level (stable references — prevents re-mount) ──
+const INP = { width:'100%', background:'white', border:'1px solid var(--border)', borderRadius:4, padding:'0.75rem 1rem', fontFamily:"'DM Sans',sans-serif", fontSize:'0.875rem', color:'var(--ink)', outline:'none' };
+const LBL = { display:'block', fontSize:'0.68rem', fontWeight:500, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:'0.4rem' };
+const DIV_STYLE = { fontSize:'0.68rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--gold)', margin:'1.25rem 0 0.75rem', paddingTop:'1rem', borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', gap:'0.5rem' };
+const OVERLAY  = { position:'fixed', inset:0, background:'rgba(13,13,13,0.55)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)', padding:'1rem' };
+const MBOX     = { background:'white', border:'1px solid var(--border)', borderRadius:10, width:'100%', maxWidth:580, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 80px rgba(13,13,13,0.15)' };
+const MHEAD    = { padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, background:'white', zIndex:1 };
+const CLOSEBTN = { background:'var(--warm)', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', width:28, height:28, cursor:'pointer', fontSize:'0.9rem', display:'flex', alignItems:'center', justifyContent:'center' };
+
+// ─── CustomerFormFields — MUST be defined outside DashboardPage ──────────────
+// Defining it inside causes React to recreate the component on every keystroke,
+// unmounting the input and losing focus after each character typed.
+function CustomerFormFields({ customer, setCustomer, entity, setEntity, channels, setChannels }) {
+  function toggleCh(ch) {
+    setChannels(prev => prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch]);
+  }
+
+  return (
+    <>
+      {/* ── Customer core info ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
+        <div style={{ gridColumn:'1/-1' }}>
+          <label style={LBL}>Full Name *</label>
+          <input style={INP} placeholder="e.g. Rahul Sharma" required
+            value={customer.name}
+            onChange={e => setCustomer(n => ({ ...n, name: e.target.value }))}/>
+        </div>
+        <div>
+          <label style={LBL}>Mobile (10 digits) *</label>
+          <div style={{ display:'flex' }}>
+            <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'0.75rem 0.8rem', fontSize:'0.82rem', fontWeight:600, color:'var(--gold)', whiteSpace:'nowrap', display:'flex', alignItems:'center' }}>+91</div>
+            <input style={{ ...INP, borderRadius:'0 4px 4px 0' }} placeholder="98765 43210" maxLength={10}
+              value={customer.phone}
+              onChange={e => setCustomer(n => ({ ...n, phone: e.target.value.replace(/\D/g,'').slice(0,10) }))}/>
+          </div>
+        </div>
+        <div>
+          <label style={LBL}>City</label>
+          <input style={INP} placeholder="e.g. Bengaluru"
+            value={customer.city}
+            onChange={e => setCustomer(n => ({ ...n, city: e.target.value }))}/>
+        </div>
+        <div style={{ gridColumn:'1/-1' }}>
+          <label style={LBL}>Email</label>
+          <input style={INP} type="email" placeholder="rahul@example.com"
+            value={customer.email}
+            onChange={e => setCustomer(n => ({ ...n, email: e.target.value }))}/>
+        </div>
+      </div>
+
+      {/* ── Messaging Channels ── */}
+      <div>
+        <div style={DIV_STYLE}>Messaging Channels <div style={{ flex:1, height:1, background:'var(--border)' }}/></div>
+        <label style={{ ...LBL, marginBottom:'0.6rem' }}>Select all that apply *</label>
+        <div style={{ display:'flex', gap:'0.6rem' }}>
+          {[{id:'whatsapp',label:'WhatsApp'},{id:'sms',label:'SMS'},{id:'email',label:'Email'}].map(ch => (
+            <div key={ch.id} onClick={() => toggleCh(ch.id)} style={{ flex:1, padding:'0.75rem', borderRadius:6, cursor:'pointer', textAlign:'center', border:`1.5px solid ${channels.includes(ch.id)?'var(--gold)':'var(--border)'}`, background:channels.includes(ch.id)?'rgba(200,168,75,0.08)':'var(--warm)', transition:'all .2s', userSelect:'none' }}>
+              <div style={{ fontSize:'0.8rem', fontWeight:600, color:channels.includes(ch.id)?'var(--gold)':'var(--ink)' }}>{ch.label}</div>
+              {channels.includes(ch.id) && <div style={{ fontSize:'0.65rem', color:'var(--gold)', marginTop:2 }}>Selected</div>}
+            </div>
+          ))}
+        </div>
+        {channels.length > 0 && (
+          <div style={{ fontSize:'0.72rem', color:'var(--muted)', marginTop:'0.4rem' }}>
+            Primary: <strong style={{ color:'var(--gold)' }}>{channels[0]}</strong>
+            {channels.length > 1 && ` + ${channels.slice(1).join(', ')}`}
+          </div>
+        )}
+      </div>
+
+      {/* ── Item / Entity Details (Fix #5 — generic) ── */}
+      <div>
+        <div style={DIV_STYLE}>{ENTITY_CONFIG.label} <div style={{ flex:1, height:1, background:'var(--border)' }}/></div>
+        <div style={{ fontSize:'0.78rem', color:'var(--muted)', marginBottom:'0.75rem', fontWeight:300 }}>
+          Optional — add details about what you service (pet, vehicle, equipment, property, etc.)
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
+          <div>
+            <label style={LBL}>Name / Label</label>
+            <input style={INP} placeholder={ENTITY_CONFIG.namePlaceholder}
+              value={entity.name}
+              onChange={e => setEntity(n => ({ ...n, name: e.target.value }))}/>
+          </div>
+          <div>
+            <label style={LBL}>{ENTITY_CONFIG.typeLabel}</label>
+            <select style={{ ...INP, cursor:'pointer' }}
+              value={entity.entityType}
+              onChange={e => setEntity(n => ({ ...n, entityType: e.target.value }))}>
+              <option value="">Select...</option>
+              {ENTITY_CONFIG.typeOptions.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
+          <div style={{ gridColumn:'1/-1' }}>
+            <label style={LBL}>{ENTITY_CONFIG.breedLabel}</label>
+            <input style={INP} placeholder={ENTITY_CONFIG.breedPlaceholder}
+              value={entity.breedOrModel}
+              onChange={e => setEntity(n => ({ ...n, breedOrModel: e.target.value }))}/>
+          </div>
+          {ENTITY_CONFIG.extraFields.map(f => (
+            <div key={f.key}>
+              <label style={LBL}>{f.label}</label>
+              {f.type === 'select'
+                ? <select style={{ ...INP, cursor:'pointer' }} value={entity[f.key]||''} onChange={e => setEntity(n => ({ ...n, [f.key]: e.target.value }))}><option value="">Select...</option>{f.options?.map(o => <option key={o} value={o}>{o}</option>)}</select>
+                : <input style={INP} type={f.type} placeholder={f.placeholder||''} value={entity[f.key]||''} onChange={e => setEntity(n => ({ ...n, [f.key]: e.target.value }))}/>
+              }
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Main Dashboard ───────────────────────────────────────────────
 export default function DashboardPage() {
   const router     = useRouter();
   const profileRef = useRef(null);
 
   const [activePanel, setActivePanel]         = useState('overview');
   const [staff, setStaff]                     = useState(null);
-  const [vertical, setVertical]               = useState('veterinary');
   const [dashboard, setDashboard]             = useState(null);
   const [customers, setCustomers]             = useState([]);
   const [reminders, setReminders]             = useState([]);
@@ -81,25 +181,28 @@ export default function DashboardPage() {
   const [toast, setToast]                     = useState(null);
   const [showProfile, setShowProfile]         = useState(false);
 
-  // Add Customer
+  // Add Customer state
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const [custChannels, setCustChannels]       = useState(['whatsapp']);
-  const [newCustomer, setNewCustomer]         = useState({ ...blankCustomer });
-  const [newEntity, setNewEntity]             = useState({ ...blankEntity });
+  const [addSaving, setAddSaving]             = useState(false);
+  const [addChannels, setAddChannels]         = useState(['whatsapp']);
+  const [addCustomer, setAddCustomer]         = useState({ ...blankCustomer });
+  const [addEntity, setAddEntity]             = useState({ ...blankEntity });
 
-  // Edit Customer — uses same fields as Add Customer
-  const [showEditCustomer, setShowEditCustomer]   = useState(false);
-  const [editingCustomer, setEditingCustomer]     = useState(null);
-  const [editCustomer, setEditCustomer]           = useState({ ...blankCustomer });
-  const [editEntity, setEditEntity]               = useState({ ...blankEntity });
-  const [editChannels, setEditChannels]           = useState(['whatsapp']);
+  // Edit Customer state
+  const [showEditCustomer, setShowEditCustomer] = useState(false);
+  const [editSaving, setEditSaving]             = useState(false);
+  const [editingCustomer, setEditingCustomer]   = useState(null);
+  const [editChannels, setEditChannels]         = useState(['whatsapp']);
+  const [editCustomer, setEditCustomer]         = useState({ ...blankCustomer });
+  const [editEntity, setEditEntity]             = useState({ ...blankEntity });
 
-  // Delete confirm
+  // Delete state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingCustomer, setDeletingCustomer]   = useState(null);
 
-  // Log Service
+  // Log Service state
   const [showLogService, setShowLogService] = useState(false);
+  const [logSaving, setLogSaving]           = useState(false);
   const [serviceForm, setServiceForm]       = useState({
     customerId:'', serviceType:'', eventDate:new Date().toISOString().split('T')[0],
     staffName:'', amountCharged:'', paymentMethod:'', followUpDays:'365', notes:'',
@@ -109,16 +212,15 @@ export default function DashboardPage() {
     if (!isLoggedIn()) { router.replace('/login'); return; }
     const s = getStaff();
     setStaff(s);
-    if (s?.vertical) setVertical(s.vertical);
     loadData();
   }, []);
 
   useEffect(() => {
-    function handleClickOutside(e) {
+    function onClickOutside(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) setShowProfile(false);
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
   async function loadData() {
@@ -142,108 +244,112 @@ export default function DashboardPage() {
 
   function showToast(msg, type='success') {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), 4000);
   }
 
   function logout() { clearAuth(); router.push('/'); }
 
-  function toggleChannel(ch, setter) {
-    setter(prev => prev.includes(ch) ? prev.filter(c=>c!==ch) : [...prev, ch]);
-  }
-
   function resetAddForm() {
-    setNewCustomer({ ...blankCustomer });
-    setNewEntity({ ...blankEntity });
-    setCustChannels(['whatsapp']);
+    setAddCustomer({ ...blankCustomer });
+    setAddEntity({ ...blankEntity });
+    setAddChannels(['whatsapp']);
   }
 
-  function entityTypeValue(label) {
-    const map = { 'Dog':'dog','Cat':'cat','Bird':'bird','Rabbit':'rabbit','Guinea Pig':'other_animal','Car':'car','Two Wheeler':'two_wheeler','SUV':'car','Commercial Vehicle':'commercial_vehicle' };
-    return map[label] || 'other';
-  }
-
-  // ── Add Customer ───────────────────────────────────────────────
+  // ── Fix #1: Add Customer — save now works with loading state + error handling ──
   async function handleAddCustomer(e) {
     e.preventDefault();
-    if (!newCustomer.name || !newCustomer.phone) { showToast('Name and phone are required','error'); return; }
-    if (!/^[6-9]\d{9}$/.test(newCustomer.phone)) { showToast('Enter a valid 10-digit Indian mobile number','error'); return; }
-    if (custChannels.length === 0) { showToast('Select at least one messaging channel','error'); return; }
-    const payload = {
-      ...newCustomer,
-      preferredChannel: custChannels[0],
-      optedInWhatsapp:  custChannels.includes('whatsapp'),
-      optedInSms:       custChannels.includes('sms'),
-      optedInEmail:     custChannels.includes('email'),
-      entity: (newEntity.name || newEntity.entityType) ? {
-        name:           newEntity.name          || undefined,
-        entityType:     entityTypeValue(newEntity.entityType),
-        breedOrModel:   newEntity.breedOrModel  || undefined,
-        gender:         newEntity.gender?.toLowerCase() || undefined,
-        dobOrYear:      newEntity.dobOrYear      || undefined,
-        registrationNo: newEntity.registrationNo || undefined,
-        notes:          newEntity.microchip ? `Microchip: ${newEntity.microchip}` : undefined,
-      } : undefined,
-    };
+    if (!addCustomer.name?.trim())  { showToast('Customer name is required','error'); return; }
+    if (!addCustomer.phone?.trim()) { showToast('Phone number is required','error'); return; }
+    if (!/^[6-9]\d{9}$/.test(addCustomer.phone)) { showToast('Enter a valid 10-digit Indian mobile number','error'); return; }
+    if (addChannels.length === 0)   { showToast('Select at least one messaging channel','error'); return; }
+
+    setAddSaving(true);
     try {
+      const payload = {
+        name:             addCustomer.name.trim(),
+        phone:            addCustomer.phone.trim(),
+        email:            addCustomer.email.trim()  || undefined,
+        city:             addCustomer.city.trim()   || undefined,
+        preferredChannel: addChannels[0],
+        optedInWhatsapp:  addChannels.includes('whatsapp'),
+        optedInSms:       addChannels.includes('sms'),
+        optedInEmail:     addChannels.includes('email'),
+        source:           'manual',
+        entity: (addEntity.name || addEntity.entityType) ? {
+          name:           addEntity.name         || undefined,
+          entityType:     mapEntityType(addEntity.entityType),
+          breedOrModel:   addEntity.breedOrModel || undefined,
+          gender:         addEntity.gender?.toLowerCase()?.replace(' / ','/') || undefined,
+          dobOrYear:      addEntity.dobOrYear    || undefined,
+          registrationNo: addEntity.registrationNo || undefined,
+          notes:          addEntity.fuelType     ? `Specification: ${addEntity.fuelType}` : undefined,
+          insuranceExpiry:addEntity.insuranceExpiry || undefined,
+        } : undefined,
+      };
       await api.createCustomer(payload);
-      showToast(`${newCustomer.name} added successfully`);
+      showToast(`${addCustomer.name} added successfully`);
       setShowAddCustomer(false);
       resetAddForm();
-      loadData();
-    } catch (err) { showToast(err.message || 'Failed to add customer','error'); }
+      await loadData();
+    } catch (err) {
+      showToast(err.message || 'Failed to add customer — please try again','error');
+    } finally { setAddSaving(false); }
   }
 
-  // ── Open Edit (pre-populate same fields as Add) ────────────────
+  function mapEntityType(label) {
+    const m = { 'Animal / Pet':'dog','Vehicle':'car','Equipment':'other','Property':'other','Product':'other','Person':'person' };
+    return m[label] || 'other';
+  }
+
+  // ── Fix #1: Edit Customer — save now works ──
   function openEditCustomer(c) {
     setEditingCustomer(c);
-    setEditCustomer({
-      name:  c.name  || '',
-      phone: c.phone || '',
-      email: c.email || '',
-      city:  c.city  || '',
-    });
+    setEditCustomer({ name:c.name||'', phone:c.phone||'', email:c.email||'', city:c.city||'' });
     setEditEntity({
-      name:           c.entity_name      || '',
-      entityType:     c.entity_type      || '',
-      breedOrModel:   c.breed_or_model   || '',
-      gender:         c.gender           || '',
-      dobOrYear:      c.dob_or_year      || '',
-      registrationNo: c.registration_no  || '',
-      fuelType:       c.fuel_type        || '',
-      insuranceExpiry:c.insurance_expiry || '',
-      microchip:      '',
+      name:            c.entity_name      || '',
+      entityType:      c.entity_type      || '',
+      breedOrModel:    c.breed_or_model   || '',
+      gender:          c.gender           || '',
+      dobOrYear:       c.dob_or_year      || '',
+      registrationNo:  c.registration_no  || '',
+      fuelType:        c.fuel_type        || '',
+      insuranceExpiry: c.insurance_expiry || '',
     });
-    const channels = [];
-    if (c.opted_in_whatsapp) channels.push('whatsapp');
-    if (c.opted_in_sms)      channels.push('sms');
-    if (c.opted_in_email)    channels.push('email');
-    setEditChannels(channels.length ? channels : [c.preferred_channel || 'whatsapp']);
+    const chs = [];
+    if (c.opted_in_whatsapp) chs.push('whatsapp');
+    if (c.opted_in_sms)      chs.push('sms');
+    if (c.opted_in_email)    chs.push('email');
+    setEditChannels(chs.length ? chs : [c.preferred_channel || 'whatsapp']);
     setShowEditCustomer(true);
   }
 
   async function handleEditCustomer(e) {
     e.preventDefault();
-    if (!editCustomer.name) { showToast('Name is required','error'); return; }
-    if (editChannels.length === 0) { showToast('Select at least one messaging channel','error'); return; }
-    const payload = {
-      name:             editCustomer.name,
-      email:            editCustomer.email   || undefined,
-      city:             editCustomer.city    || undefined,
-      preferredChannel: editChannels[0],
-      optedInWhatsapp:  editChannels.includes('whatsapp'),
-      optedInSms:       editChannels.includes('sms'),
-      optedInEmail:     editChannels.includes('email'),
-    };
+    if (!editCustomer.name?.trim()) { showToast('Customer name is required','error'); return; }
+    if (editChannels.length === 0)  { showToast('Select at least one messaging channel','error'); return; }
+
+    setEditSaving(true);
     try {
+      const payload = {
+        name:             editCustomer.name.trim(),
+        email:            editCustomer.email?.trim() || undefined,
+        city:             editCustomer.city?.trim()  || undefined,
+        preferredChannel: editChannels[0],
+        optedInWhatsapp:  editChannels.includes('whatsapp'),
+        optedInSms:       editChannels.includes('sms'),
+        optedInEmail:     editChannels.includes('email'),
+      };
       await api.updateCustomer(editingCustomer.id, payload);
       showToast(`${editCustomer.name} updated successfully`);
       setShowEditCustomer(false);
       setEditingCustomer(null);
-      loadData();
-    } catch (err) { showToast(err.message || 'Failed to update customer','error'); }
+      await loadData();
+    } catch (err) {
+      showToast(err.message || 'Failed to update customer — please try again','error');
+    } finally { setEditSaving(false); }
   }
 
-  // ── Delete ─────────────────────────────────────────────────────
+  // ── Delete ────────────────────────────────────────────────────
   function openDeleteConfirm(c) { setDeletingCustomer(c); setShowDeleteConfirm(true); }
 
   async function handleDeleteCustomer() {
@@ -252,31 +358,39 @@ export default function DashboardPage() {
       showToast(`${deletingCustomer.name} removed`);
       setShowDeleteConfirm(false);
       setDeletingCustomer(null);
-      loadData();
-    } catch (err) { showToast(err.message || 'Failed to remove customer','error'); }
+      await loadData();
+    } catch (err) { showToast(err.message || 'Failed to remove','error'); }
   }
 
-  // ── Log Service ────────────────────────────────────────────────
+  // ── Fix #1: Log Service — save now works ──
   async function handleLogService(e) {
     e.preventDefault();
-    if (!serviceForm.customerId || !serviceForm.serviceType) { showToast('Please select a customer and service type','error'); return; }
+    if (!serviceForm.customerId) { showToast('Please select a customer','error'); return; }
+    if (!serviceForm.serviceType) { showToast('Please select a service type','error'); return; }
+
+    setLogSaving(true);
     try {
       await api.createServiceEvent({
         customerId:    serviceForm.customerId,
         serviceType:   serviceForm.serviceType,
         eventDate:     serviceForm.eventDate,
-        staffName:     serviceForm.staffName     || undefined,
-        amountCharged: serviceForm.amountCharged ? parseFloat(serviceForm.amountCharged) : undefined,
-        paymentMethod: serviceForm.paymentMethod || undefined,
-        followUpDays:  serviceForm.followUpDays  ? parseInt(serviceForm.followUpDays) : undefined,
-        notes:         serviceForm.notes         || undefined,
+        staffName:     serviceForm.staffName      || undefined,
+        amountCharged: serviceForm.amountCharged  ? parseFloat(serviceForm.amountCharged) : undefined,
+        paymentMethod: serviceForm.paymentMethod  || undefined,
+        followUpDays:  serviceForm.followUpDays   ? parseInt(serviceForm.followUpDays)    : undefined,
+        notes:         serviceForm.notes          || undefined,
         status:        'completed',
       });
       showToast('Service logged and reminder scheduled');
       setShowLogService(false);
-      setServiceForm({ customerId:'', serviceType:'', eventDate:new Date().toISOString().split('T')[0], staffName:'', amountCharged:'', paymentMethod:'', followUpDays:'365', notes:'' });
-      loadData();
-    } catch (err) { showToast(err.message || 'Failed to log service','error'); }
+      setServiceForm({
+        customerId:'', serviceType:'', eventDate:new Date().toISOString().split('T')[0],
+        staffName:'', amountCharged:'', paymentMethod:'', followUpDays:'365', notes:'',
+      });
+      await loadData();
+    } catch (err) {
+      showToast(err.message || 'Failed to log service — please try again','error');
+    } finally { setLogSaving(false); }
   }
 
   async function handleSendReminder(id, name) {
@@ -309,113 +423,23 @@ export default function DashboardPage() {
   ];
 
   function pill(type) {
-    const map = { active:'sf-pill sf-pill-active', completed:'sf-pill sf-pill-active', dormant:'sf-pill sf-pill-dormant', overdue:'sf-pill sf-pill-overdue', whatsapp:'sf-pill sf-pill-whatsapp', sms:'sf-pill sf-pill-sms', email:'sf-pill sf-pill-email' };
-    return map[type] || 'sf-pill sf-pill-dormant';
+    const m = { active:'sf-pill sf-pill-active', completed:'sf-pill sf-pill-active', dormant:'sf-pill sf-pill-dormant', overdue:'sf-pill sf-pill-overdue', whatsapp:'sf-pill sf-pill-whatsapp', sms:'sf-pill sf-pill-sms', email:'sf-pill sf-pill-email' };
+    return m[type] || 'sf-pill sf-pill-dormant';
   }
 
-  const entityCfg   = ENTITY_CONFIG[vertical] || DEFAULT_ENTITY_CONFIG;
-  const serviceOpts = SERVICE_TYPES[vertical]  || SERVICE_TYPES.veterinary;
-  const navItems    = [
+  const navItems = [
     { id:'overview',   label:'Overview' },
     { id:'customers',  label:'Customers' },
     { id:'servicelog', label:'Service Log' },
     { id:'reminders',  label:'Reminder Queue' },
   ];
 
-  // Shared styles
-  const inp = { width:'100%', background:'white', border:'1px solid var(--border)', borderRadius:4, padding:'0.75rem 1rem', fontFamily:"'DM Sans',sans-serif", fontSize:'0.875rem', color:'var(--ink)', outline:'none' };
-  const lbl = { display:'block', fontSize:'0.68rem', fontWeight:500, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:'0.4rem' };
-  const overlay = { position:'fixed', inset:0, background:'rgba(13,13,13,0.55)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)', padding:'1rem' };
-  const mbox = { background:'white', border:'1px solid var(--border)', borderRadius:10, width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 80px rgba(13,13,13,0.15)' };
-  const mhead = { padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, background:'white', zIndex:1 };
-  const divider = { fontSize:'0.68rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--gold)', margin:'1.25rem 0 0.75rem', paddingTop:'1rem', borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', gap:'0.5rem' };
-  const closeBtn = { background:'var(--warm)', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', width:28, height:28, cursor:'pointer', fontSize:'0.9rem', display:'flex', alignItems:'center', justifyContent:'center' };
-
-  // Reusable customer/entity form fields — used in both Add and Edit modals
-  function CustomerFormFields({ customer, setCustomer, entity, setEntity, channels, setChannels }) {
-    return (
-      <>
-        {/* Customer info */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
-          <div style={{ gridColumn:'1/-1' }}>
-            <label style={lbl}>Full Name *</label>
-            <input style={inp} placeholder="Priya Sharma" required value={customer.name} onChange={e=>setCustomer(n=>({...n,name:e.target.value}))}/>
-          </div>
-          <div>
-            <label style={lbl}>Mobile (10 digits) *</label>
-            <div style={{ display:'flex' }}>
-              <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'0.75rem 0.8rem', fontSize:'0.82rem', fontWeight:600, color:'var(--gold)', whiteSpace:'nowrap' }}>+91</div>
-              <input style={{ ...inp, borderRadius:'0 4px 4px 0' }} placeholder="98765 43210" maxLength={10} value={customer.phone} onChange={e=>setCustomer(n=>({...n,phone:e.target.value.replace(/\D/g,'').slice(0,10)}))}/>
-            </div>
-          </div>
-          <div>
-            <label style={lbl}>City</label>
-            <input style={inp} placeholder="Bengaluru" value={customer.city} onChange={e=>setCustomer(n=>({...n,city:e.target.value}))}/>
-          </div>
-          <div style={{ gridColumn:'1/-1' }}>
-            <label style={lbl}>Email</label>
-            <input style={inp} type="email" placeholder="priya@gmail.com" value={customer.email} onChange={e=>setCustomer(n=>({...n,email:e.target.value}))}/>
-          </div>
-        </div>
-
-        {/* Messaging Channels */}
-        <div>
-          <div style={divider}>Messaging Channels <div style={{ flex:1, height:1, background:'var(--border)' }}/></div>
-          <label style={{ ...lbl, marginBottom:'0.6rem' }}>Select all that apply *</label>
-          <div style={{ display:'flex', gap:'0.6rem' }}>
-            {[{id:'whatsapp',label:'WhatsApp'},{id:'sms',label:'SMS'},{id:'email',label:'Email'}].map(ch => (
-              <div key={ch.id} onClick={() => toggleChannel(ch.id, setChannels)} style={{ flex:1, padding:'0.75rem', borderRadius:6, cursor:'pointer', textAlign:'center', border:`1.5px solid ${channels.includes(ch.id)?'var(--gold)':'var(--border)'}`, background:channels.includes(ch.id)?'rgba(200,168,75,0.08)':'var(--warm)', transition:'all .2s' }}>
-                <div style={{ fontSize:'0.8rem', fontWeight:600, color:channels.includes(ch.id)?'var(--gold)':'var(--ink)' }}>{ch.label}</div>
-                {channels.includes(ch.id) && <div style={{ fontSize:'0.65rem', color:'var(--gold)', marginTop:2 }}>Selected</div>}
-              </div>
-            ))}
-          </div>
-          {channels.length > 0 && (
-            <div style={{ fontSize:'0.72rem', color:'var(--muted)', marginTop:'0.4rem' }}>
-              Primary: <strong style={{ color:'var(--gold)' }}>{channels[0]}</strong>
-              {channels.length > 1 && ` + ${channels.slice(1).join(', ')}`}
-            </div>
-          )}
-        </div>
-
-        {/* Entity / Pet / Vehicle */}
-        <div>
-          <div style={divider}>{entityCfg.label} <div style={{ flex:1, height:1, background:'var(--border)' }}/></div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
-            <div>
-              <label style={lbl}>Name</label>
-              <input style={inp} placeholder={entityCfg.namePlaceholder} value={entity.name} onChange={e=>setEntity(n=>({...n,name:e.target.value}))}/>
-            </div>
-            <div>
-              <label style={lbl}>{entityCfg.typeLabel}</label>
-              <select style={{ ...inp, cursor:'pointer' }} value={entity.entityType} onChange={e=>setEntity(n=>({...n,entityType:e.target.value}))}>
-                <option value="">Select...</option>
-                {entityCfg.typeOptions.map(o=><option key={o} value={o}>{o}</option>)}
-              </select>
-            </div>
-            <div style={{ gridColumn:'1/-1' }}>
-              <label style={lbl}>{entityCfg.breedLabel}</label>
-              <input style={inp} placeholder={entityCfg.breedPlaceholder} value={entity.breedOrModel} onChange={e=>setEntity(n=>({...n,breedOrModel:e.target.value}))}/>
-            </div>
-            {entityCfg.extraFields.map(f=>(
-              <div key={f.key}>
-                <label style={lbl}>{f.label}</label>
-                {f.type==='select'
-                  ? <select style={{ ...inp, cursor:'pointer' }} value={entity[f.key]||''} onChange={e=>setEntity(n=>({...n,[f.key]:e.target.value}))}><option value="">Select...</option>{f.options.map(o=><option key={o} value={o}>{o}</option>)}</select>
-                  : <input style={inp} type={f.type} placeholder={f.placeholder||''} value={entity[f.key]||''} onChange={e=>setEntity(n=>({...n,[f.key]:e.target.value}))}/>
-                }
-              </div>
-            ))}
-          </div>
-        </div>
-      </>
-    );
-  }
-
   if (loading) return (
     <div style={{ height:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--cream)' }}>
       <div style={{ textAlign:'center' }}>
-        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.5rem', fontWeight:700, color:'var(--ink)', marginBottom:'0.5rem' }}>Shih<span style={{ color:'var(--gold)' }}>-Fu</span></div>
+        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.5rem', fontWeight:700, color:'var(--ink)', marginBottom:'0.5rem' }}>
+          Shih<span style={{ color:'var(--gold)' }}>-Fu</span>
+        </div>
         <div style={{ fontSize:'0.82rem', color:'var(--muted)', letterSpacing:'0.08em' }}>Loading your dashboard...</div>
       </div>
     </div>
@@ -424,12 +448,13 @@ export default function DashboardPage() {
   return (
     <div style={{ display:'grid', gridTemplateColumns:'240px 1fr', height:'100vh', background:'var(--cream)', overflow:'hidden' }}>
 
-      {/* ── SIDEBAR ── */}
+      {/* SIDEBAR */}
       <aside style={{ background:'white', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
         <div style={{ padding:'1.5rem 1.5rem 1rem', borderBottom:'1px solid var(--border)' }}>
-          <Link href="/" style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.4rem', fontWeight:900, color:'var(--ink)', textDecoration:'none', letterSpacing:'-0.02em' }}>
+          {/* Fix #3 — logo is plain text, not a link */}
+          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.4rem', fontWeight:900, color:'var(--ink)', letterSpacing:'-0.02em', userSelect:'none' }}>
             Shih<span style={{ color:'var(--gold)' }}>-Fu</span>
-          </Link>
+          </div>
           <div style={{ marginTop:'0.9rem', padding:'0.75rem 1rem', background:'var(--warm)', borderRadius:6, border:'1px solid var(--border)' }}>
             <div style={{ fontSize:'0.82rem', fontWeight:600, color:'var(--ink)' }}>{staff?.businessName || 'Your Business'}</div>
             <div style={{ fontSize:'0.72rem', color:'var(--muted)', marginTop:2 }}>{staff?.plan || 'Growth Plan'}</div>
@@ -441,51 +466,42 @@ export default function DashboardPage() {
           {navItems.map(n => (
             <div key={n.id} onClick={() => setActivePanel(n.id)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.65rem 0.75rem', borderRadius:6, cursor:'pointer', marginBottom:2, background:activePanel===n.id?'rgba(200,168,75,0.1)':'transparent', color:activePanel===n.id?'var(--gold)':'var(--muted)', fontWeight:activePanel===n.id?600:400, border:activePanel===n.id?'1px solid rgba(200,168,75,0.2)':'1px solid transparent', fontSize:'0.875rem', transition:'all .15s' }}>
               {n.label}
-              {n.id==='reminders' && queue.overdue > 0 && (
-                <span style={{ background:'var(--rust)', color:'white', fontSize:'0.62rem', fontWeight:700, padding:'1px 6px', borderRadius:10 }}>{queue.overdue}</span>
-              )}
+              {n.id==='reminders' && queue.overdue > 0 && <span style={{ background:'var(--rust)', color:'white', fontSize:'0.62rem', fontWeight:700, padding:'1px 6px', borderRadius:10 }}>{queue.overdue}</span>}
             </div>
           ))}
         </nav>
-        {/* Sign out removed from sidebar — available in profile dropdown */}
       </aside>
 
-      {/* ── MAIN ── */}
+      {/* MAIN */}
       <div style={{ display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
         {/* Topbar */}
         <div style={{ height:60, borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 1.5rem', background:'white', flexShrink:0 }}>
           <div>
             <div style={{ fontSize:'0.68rem', fontWeight:500, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)' }}>Dashboard / {activePanel}</div>
-            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'1rem', fontStyle:'italic', color:'var(--ink)' }}>
-              {staff ? `Good day, ${staff.name?.split(' ')[0]}` : 'Dashboard'}
-            </div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'1rem', fontStyle:'italic', color:'var(--ink)' }}>{staff ? `Good day, ${staff.name?.split(' ')[0]}` : 'Dashboard'}</div>
           </div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             <button className="sf-btn-ghost" style={{ padding:'0.5rem 1rem', fontSize:'0.8rem' }} onClick={() => setShowAddCustomer(true)}>+ Add Customer</button>
             <button className="sf-btn-primary" style={{ padding:'0.5rem 1rem', fontSize:'0.8rem' }} onClick={() => setShowLogService(true)}>+ Log Service</button>
 
-            {/* Profile button */}
+            {/* Profile dropdown */}
             <div ref={profileRef} style={{ position:'relative' }}>
-              <div onClick={() => setShowProfile(p=>!p)} style={{ width:36, height:36, borderRadius:'50%', background:'rgba(200,168,75,0.15)', border:'1.5px solid rgba(200,168,75,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.85rem', fontWeight:700, color:'var(--gold)', cursor:'pointer', userSelect:'none' }}>
+              <div onClick={() => setShowProfile(p => !p)} style={{ width:36, height:36, borderRadius:'50%', background:'rgba(200,168,75,0.15)', border:'1.5px solid rgba(200,168,75,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.85rem', fontWeight:700, color:'var(--gold)', cursor:'pointer', userSelect:'none' }}>
                 {staff?.name?.charAt(0) || 'U'}
               </div>
-
               {showProfile && (
                 <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'white', border:'1px solid var(--border)', borderRadius:8, boxShadow:'0 8px 32px rgba(13,13,13,0.12)', minWidth:230, zIndex:200, overflow:'hidden' }}>
-                  {/* Header */}
                   <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', background:'var(--warm)' }}>
                     <div style={{ fontSize:'0.875rem', fontWeight:600, color:'var(--ink)' }}>{staff?.name || 'User'}</div>
                     <div style={{ fontSize:'0.75rem', color:'var(--muted)', marginTop:2 }}>{staff?.email || ''}</div>
                     <div style={{ marginTop:6 }}><span className="sf-pill sf-pill-active" style={{ fontSize:'0.65rem' }}>{staff?.role || 'owner'}</span></div>
                   </div>
-                  {/* Business */}
                   <div style={{ padding:'0.75rem 1.25rem', borderBottom:'1px solid var(--border)' }}>
                     <div style={{ fontSize:'0.68rem', fontWeight:500, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:'0.3rem' }}>Business</div>
                     <div style={{ fontSize:'0.82rem', fontWeight:600, color:'var(--ink)' }}>{staff?.businessName || 'Your Business'}</div>
-                    <div style={{ fontSize:'0.75rem', color:'var(--muted)', marginTop:2 }}>{staff?.vertical?.replace('_',' ') || 'Service Business'}</div>
+                    <div style={{ fontSize:'0.75rem', color:'var(--muted)', marginTop:2 }}>{staff?.vertical?.replace(/_/g,' ') || 'Service Business'}</div>
                   </div>
-                  {/* Plan */}
                   <div style={{ padding:'0.75rem 1.25rem', borderBottom:'1px solid var(--border)' }}>
                     <div style={{ fontSize:'0.68rem', fontWeight:500, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:'0.3rem' }}>Current Plan</div>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -493,19 +509,15 @@ export default function DashboardPage() {
                       <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>{staff?.planStatus || 'Active'}</span>
                     </div>
                   </div>
-                  {/* Actions */}
                   <div style={{ padding:'0.5rem' }}>
-                    {[
-                      { label:'Account Settings', href:'/dashboard/settings' },
-                      { label:'Help and Support',  href:'/dashboard/help' },
-                    ].map(item => (
-                      <Link key={item.label} href={item.href} onClick={() => setShowProfile(false)} style={{ display:'block', padding:'0.6rem 0.75rem', borderRadius:6, fontSize:'0.82rem', color:'var(--muted)', textDecoration:'none', transition:'background .15s' }}
+                    {[{label:'Account Settings',href:'/dashboard/settings'},{label:'Help and Support',href:'/dashboard/help'}].map(item => (
+                      <Link key={item.label} href={item.href} onClick={() => setShowProfile(false)} style={{ display:'block', padding:'0.6rem 0.75rem', borderRadius:6, fontSize:'0.82rem', color:'var(--muted)', textDecoration:'none' }}
                         onMouseEnter={e => e.currentTarget.style.background='var(--warm)'}
                         onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                         {item.label}
                       </Link>
                     ))}
-                    <div onClick={() => { setShowProfile(false); logout(); }} style={{ padding:'0.6rem 0.75rem', borderRadius:6, cursor:'pointer', fontSize:'0.82rem', color:'var(--rust)', fontWeight:500, transition:'background .15s' }}
+                    <div onClick={() => { setShowProfile(false); logout(); }} style={{ padding:'0.6rem 0.75rem', borderRadius:6, cursor:'pointer', fontSize:'0.82rem', color:'var(--rust)', fontWeight:500 }}
                       onMouseEnter={e => e.currentTarget.style.background='rgba(196,83,42,0.06)'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                       Sign Out
@@ -517,11 +529,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Content */}
+        {/* Content panels */}
         <div style={{ flex:1, overflowY:'auto', padding:'1.5rem' }}>
 
           {/* OVERVIEW */}
-          {activePanel==='overview' && (
+          {activePanel === 'overview' && (
             <div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:16 }}>
                 {kpis.map((k,i) => (
@@ -551,31 +563,29 @@ export default function DashboardPage() {
                   <span style={{ fontSize:'0.85rem', fontWeight:600, color:'var(--ink)' }}>Recent Customers</span>
                   <button className="sf-btn-ghost" style={{ padding:'0.4rem 1rem', fontSize:'0.75rem' }} onClick={() => setActivePanel('customers')}>View All</button>
                 </div>
-                <div style={{ overflowX:'auto' }}>
-                  <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                    <thead><tr style={{ borderBottom:'1px solid var(--border)', background:'var(--warm)' }}>
-                      {['Customer','Phone','Status','Channel','Last Visit'].map(h => <th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:500, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)' }}>{h}</th>)}
-                    </tr></thead>
-                    <tbody>
-                      {customers.slice(0,5).map(c => (
-                        <tr key={c.id} style={{ borderBottom:'1px solid var(--border)' }}>
-                          <td style={{ padding:'0.85rem 1rem', fontSize:'0.875rem', fontWeight:600, color:'var(--ink)' }}>{c.name}</td>
-                          <td style={{ padding:'0.85rem 1rem', fontSize:'0.8rem', color:'var(--muted)' }}>+91 {c.phone}</td>
-                          <td style={{ padding:'0.85rem 1rem' }}><span className={pill(c.status)}>{c.status}</span></td>
-                          <td style={{ padding:'0.85rem 1rem' }}><span className={pill(c.preferred_channel)}>{c.preferred_channel}</span></td>
-                          <td style={{ padding:'0.85rem 1rem', fontSize:'0.78rem', color:'var(--muted)' }}>{c.last_visit_at ? new Date(c.last_visit_at).toLocaleDateString('en-IN') : 'Not yet'}</td>
-                        </tr>
-                      ))}
-                      {customers.length===0 && <tr><td colSpan={5} style={{ padding:'3rem', textAlign:'center', color:'var(--muted)', fontSize:'0.875rem' }}>No customers yet. Add your first customer to get started.</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
+                <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                  <thead><tr style={{ borderBottom:'1px solid var(--border)', background:'var(--warm)' }}>
+                    {['Customer','Phone','Status','Channel','Last Visit'].map(h => <th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:500, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)' }}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {customers.slice(0,5).map(c => (
+                      <tr key={c.id} style={{ borderBottom:'1px solid var(--border)' }}>
+                        <td style={{ padding:'0.85rem 1rem', fontSize:'0.875rem', fontWeight:600, color:'var(--ink)' }}>{c.name}</td>
+                        <td style={{ padding:'0.85rem 1rem', fontSize:'0.8rem', color:'var(--muted)' }}>+91 {c.phone}</td>
+                        <td style={{ padding:'0.85rem 1rem' }}><span className={pill(c.status)}>{c.status}</span></td>
+                        <td style={{ padding:'0.85rem 1rem' }}><span className={pill(c.preferred_channel)}>{c.preferred_channel}</span></td>
+                        <td style={{ padding:'0.85rem 1rem', fontSize:'0.78rem', color:'var(--muted)' }}>{c.last_visit_at ? new Date(c.last_visit_at).toLocaleDateString('en-IN') : 'Not yet'}</td>
+                      </tr>
+                    ))}
+                    {customers.length===0 && <tr><td colSpan={5} style={{ padding:'3rem', textAlign:'center', color:'var(--muted)', fontSize:'0.875rem' }}>No customers yet. Add your first customer to get started.</td></tr>}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
           {/* CUSTOMERS */}
-          {activePanel==='customers' && (
+          {activePanel === 'customers' && (
             <div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
                 <div>
@@ -622,7 +632,7 @@ export default function DashboardPage() {
           )}
 
           {/* SERVICE LOG */}
-          {activePanel==='servicelog' && (
+          {activePanel === 'servicelog' && (
             <div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
                 <div>
@@ -636,32 +646,30 @@ export default function DashboardPage() {
                   <span style={{ fontSize:'0.85rem', fontWeight:600, color:'var(--ink)' }}>All Events</span>
                   <span style={{ fontSize:'0.72rem', color:'var(--muted)' }}>{events.length} records</span>
                 </div>
-                <div style={{ overflowX:'auto' }}>
-                  <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                    <thead><tr style={{ borderBottom:'1px solid var(--border)', background:'var(--warm)' }}>
-                      {['Customer','Service','Date','Amount','Staff','Status'].map(h => <th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:500, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)' }}>{h}</th>)}
-                    </tr></thead>
-                    <tbody>
-                      {events.map(e => (
-                        <tr key={e.id} style={{ borderBottom:'1px solid var(--border)' }}>
-                          <td style={{ padding:'0.85rem 1rem', fontSize:'0.875rem', fontWeight:600, color:'var(--ink)' }}>{e.customer_name}</td>
-                          <td style={{ padding:'0.85rem 1rem', fontSize:'0.875rem', color:'var(--muted)' }}>{e.service_type}</td>
-                          <td style={{ padding:'0.85rem 1rem', fontSize:'0.78rem', color:'var(--muted)' }}>{new Date(e.event_date).toLocaleDateString('en-IN')}</td>
-                          <td style={{ padding:'0.85rem 1rem', fontSize:'0.82rem', fontWeight:600, color:'var(--gold)' }}>{e.amount_charged ? `Rs. ${e.amount_charged}` : 'Not recorded'}</td>
-                          <td style={{ padding:'0.85rem 1rem', fontSize:'0.82rem', color:'var(--muted)' }}>{e.logged_by_name || 'Not recorded'}</td>
-                          <td style={{ padding:'0.85rem 1rem' }}><span className={pill(e.status==='completed'?'active':'dormant')}>{e.status}</span></td>
-                        </tr>
-                      ))}
-                      {events.length===0 && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:'var(--muted)', fontSize:'0.875rem' }}>No service events yet.</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
+                <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                  <thead><tr style={{ borderBottom:'1px solid var(--border)', background:'var(--warm)' }}>
+                    {['Customer','Service','Date','Amount','Staff','Status'].map(h => <th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:500, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)' }}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {events.map(e => (
+                      <tr key={e.id} style={{ borderBottom:'1px solid var(--border)' }}>
+                        <td style={{ padding:'0.85rem 1rem', fontSize:'0.875rem', fontWeight:600, color:'var(--ink)' }}>{e.customer_name}</td>
+                        <td style={{ padding:'0.85rem 1rem', fontSize:'0.875rem', color:'var(--muted)' }}>{e.service_type}</td>
+                        <td style={{ padding:'0.85rem 1rem', fontSize:'0.78rem', color:'var(--muted)' }}>{new Date(e.event_date).toLocaleDateString('en-IN')}</td>
+                        <td style={{ padding:'0.85rem 1rem', fontSize:'0.82rem', fontWeight:600, color:'var(--gold)' }}>{e.amount_charged ? `Rs. ${e.amount_charged}` : 'Not recorded'}</td>
+                        <td style={{ padding:'0.85rem 1rem', fontSize:'0.82rem', color:'var(--muted)' }}>{e.logged_by_name || 'Not recorded'}</td>
+                        <td style={{ padding:'0.85rem 1rem' }}><span className={pill(e.status==='completed'?'active':'dormant')}>{e.status}</span></td>
+                      </tr>
+                    ))}
+                    {events.length===0 && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:'var(--muted)', fontSize:'0.875rem' }}>No service events yet.</td></tr>}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
           {/* REMINDERS */}
-          {activePanel==='reminders' && (
+          {activePanel === 'reminders' && (
             <div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
                 <div>
@@ -689,8 +697,8 @@ export default function DashboardPage() {
                       <div style={{ fontSize:'0.78rem', color:'var(--muted)', marginTop:2 }}>{r.entity_name ? `${r.entity_name} · ` : ''}{r.reminder_type}</div>
                       <div style={{ marginTop:4 }}><span className={pill(r.channel)}>{r.channel}</span></div>
                     </div>
-                    <div style={{ fontSize:'0.75rem', fontWeight:600, textAlign:'right', flexShrink:0, color:r.urgency==='overdue'?'var(--rust)':r.urgency==='today'?'var(--gold)':'#4a7c59' }}>
-                      {r.urgency==='overdue' ? `${Math.abs(r.days_until_due)} days overdue` : r.urgency==='today' ? 'Due Today' : `In ${r.days_until_due} days`}
+                    <div style={{ fontSize:'0.75rem', fontWeight:600, flexShrink:0, color:r.urgency==='overdue'?'var(--rust)':r.urgency==='today'?'var(--gold)':'#4a7c59' }}>
+                      {r.urgency==='overdue'?`${Math.abs(r.days_until_due)} days overdue`:r.urgency==='today'?'Due Today':`In ${r.days_until_due} days`}
                     </div>
                     <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                       {r.status==='scheduled' && (
@@ -707,50 +715,53 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
-
         </div>
       </div>
 
       {/* MODAL: ADD CUSTOMER */}
       {showAddCustomer && (
-        <div style={overlay} onClick={() => { setShowAddCustomer(false); resetAddForm(); }}>
-          <div style={mbox} onClick={e => e.stopPropagation()}>
-            <div style={mhead}>
+        <div style={OVERLAY} onClick={() => { setShowAddCustomer(false); resetAddForm(); }}>
+          <div style={MBOX} onClick={e => e.stopPropagation()}>
+            <div style={MHEAD}>
               <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.2rem', fontWeight:700, color:'var(--ink)' }}>Add New Customer</h3>
-              <button style={closeBtn} onClick={() => { setShowAddCustomer(false); resetAddForm(); }}>x</button>
+              <button style={CLOSEBTN} onClick={() => { setShowAddCustomer(false); resetAddForm(); }}>x</button>
             </div>
             <form onSubmit={handleAddCustomer} style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
               <CustomerFormFields
-                customer={newCustomer} setCustomer={setNewCustomer}
-                entity={newEntity}     setEntity={setNewEntity}
-                channels={custChannels} setChannels={setCustChannels}
+                customer={addCustomer}   setCustomer={setAddCustomer}
+                entity={addEntity}       setEntity={setAddEntity}
+                channels={addChannels}   setChannels={setAddChannels}
               />
               <div style={{ display:'flex', gap:8, marginTop:'0.5rem' }}>
                 <button type="button" className="sf-btn-ghost" style={{ flex:1, padding:'0.8rem' }} onClick={() => { setShowAddCustomer(false); resetAddForm(); }}>Cancel</button>
-                <button type="submit" className="sf-btn-primary" style={{ flex:1, padding:'0.8rem' }}>Save Customer</button>
+                <button type="submit" className="sf-btn-primary" style={{ flex:1, padding:'0.8rem', opacity:addSaving?0.7:1 }} disabled={addSaving}>
+                  {addSaving ? 'Saving...' : 'Save Customer'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL: EDIT CUSTOMER — identical fields to Add Customer */}
+      {/* MODAL: EDIT CUSTOMER */}
       {showEditCustomer && editingCustomer && (
-        <div style={overlay} onClick={() => setShowEditCustomer(false)}>
-          <div style={mbox} onClick={e => e.stopPropagation()}>
-            <div style={mhead}>
+        <div style={OVERLAY} onClick={() => setShowEditCustomer(false)}>
+          <div style={MBOX} onClick={e => e.stopPropagation()}>
+            <div style={MHEAD}>
               <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.2rem', fontWeight:700, color:'var(--ink)' }}>Edit Customer</h3>
-              <button style={closeBtn} onClick={() => setShowEditCustomer(false)}>x</button>
+              <button style={CLOSEBTN} onClick={() => setShowEditCustomer(false)}>x</button>
             </div>
             <form onSubmit={handleEditCustomer} style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
               <CustomerFormFields
-                customer={editCustomer} setCustomer={setEditCustomer}
-                entity={editEntity}     setEntity={setEditEntity}
-                channels={editChannels} setChannels={setEditChannels}
+                customer={editCustomer}   setCustomer={setEditCustomer}
+                entity={editEntity}       setEntity={setEditEntity}
+                channels={editChannels}   setChannels={setEditChannels}
               />
               <div style={{ display:'flex', gap:8, marginTop:'0.5rem' }}>
                 <button type="button" className="sf-btn-ghost" style={{ flex:1, padding:'0.8rem' }} onClick={() => setShowEditCustomer(false)}>Cancel</button>
-                <button type="submit" className="sf-btn-primary" style={{ flex:1, padding:'0.8rem' }}>Save Changes</button>
+                <button type="submit" className="sf-btn-primary" style={{ flex:1, padding:'0.8rem', opacity:editSaving?0.7:1 }} disabled={editSaving}>
+                  {editSaving ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
             </form>
           </div>
@@ -759,18 +770,18 @@ export default function DashboardPage() {
 
       {/* MODAL: DELETE CONFIRM */}
       {showDeleteConfirm && deletingCustomer && (
-        <div style={overlay} onClick={() => setShowDeleteConfirm(false)}>
-          <div style={{ ...mbox, maxWidth:400 }} onClick={e => e.stopPropagation()}>
-            <div style={mhead}>
+        <div style={OVERLAY} onClick={() => setShowDeleteConfirm(false)}>
+          <div style={{ ...MBOX, maxWidth:400 }} onClick={e => e.stopPropagation()}>
+            <div style={MHEAD}>
               <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.2rem', fontWeight:700, color:'var(--ink)' }}>Remove Customer</h3>
-              <button style={closeBtn} onClick={() => setShowDeleteConfirm(false)}>x</button>
+              <button style={CLOSEBTN} onClick={() => setShowDeleteConfirm(false)}>x</button>
             </div>
             <div style={{ padding:'1.5rem' }}>
               <p style={{ fontSize:'0.9rem', color:'var(--muted)', lineHeight:1.7, marginBottom:'0.75rem' }}>
-                Are you sure you want to remove <strong style={{ color:'var(--ink)' }}>{deletingCustomer.name}</strong> from your customer list?
+                Are you sure you want to remove <strong style={{ color:'var(--ink)' }}>{deletingCustomer.name}</strong>?
               </p>
               <p style={{ fontSize:'0.8rem', color:'var(--muted)', lineHeight:1.6, background:'rgba(196,83,42,0.06)', border:'1px solid rgba(196,83,42,0.15)', borderRadius:6, padding:'0.75rem 1rem' }}>
-                Their service history and reminders will be preserved. This action marks them as removed and stops future reminders.
+                Service history is preserved. Future reminders will be stopped.
               </p>
               <div style={{ display:'flex', gap:8, marginTop:'1.5rem' }}>
                 <button className="sf-btn-ghost" style={{ flex:1, padding:'0.8rem' }} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
@@ -783,45 +794,45 @@ export default function DashboardPage() {
 
       {/* MODAL: LOG SERVICE */}
       {showLogService && (
-        <div style={overlay} onClick={() => setShowLogService(false)}>
-          <div style={mbox} onClick={e => e.stopPropagation()}>
-            <div style={mhead}>
+        <div style={OVERLAY} onClick={() => setShowLogService(false)}>
+          <div style={MBOX} onClick={e => e.stopPropagation()}>
+            <div style={MHEAD}>
               <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.2rem', fontWeight:700, color:'var(--ink)' }}>Log a Service Event</h3>
-              <button style={closeBtn} onClick={() => setShowLogService(false)}>x</button>
+              <button style={CLOSEBTN} onClick={() => setShowLogService(false)}>x</button>
             </div>
             <form onSubmit={handleLogService} style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
               <div>
-                <label style={lbl}>Customer *</label>
-                <select style={{ ...inp, cursor:'pointer' }} value={serviceForm.customerId} onChange={e=>setServiceForm(f=>({...f,customerId:e.target.value}))} required>
+                <label style={LBL}>Customer *</label>
+                <select style={{ ...INP, cursor:'pointer' }} value={serviceForm.customerId} onChange={e => setServiceForm(f=>({...f,customerId:e.target.value}))} required>
                   <option value="">Select customer...</option>
                   {customers.map(c => <option key={c.id} value={c.id}>{c.name}{c.entity_name?` (${c.entity_name})`:''}</option>)}
                 </select>
               </div>
               <div>
-                <label style={lbl}>Service Type *</label>
-                <select style={{ ...inp, cursor:'pointer' }} value={serviceForm.serviceType} onChange={e=>setServiceForm(f=>({...f,serviceType:e.target.value}))} required>
+                <label style={LBL}>Service Type *</label>
+                <select style={{ ...INP, cursor:'pointer' }} value={serviceForm.serviceType} onChange={e => setServiceForm(f=>({...f,serviceType:e.target.value}))} required>
                   <option value="">Select service...</option>
-                  {serviceOpts.map(s => <option key={s} value={s}>{s}</option>)}
+                  {SERVICE_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
                 <div>
-                  <label style={lbl}>Date of Service *</label>
-                  <input style={inp} type="date" value={serviceForm.eventDate} onChange={e=>setServiceForm(f=>({...f,eventDate:e.target.value}))}/>
+                  <label style={LBL}>Date of Service *</label>
+                  <input style={INP} type="date" value={serviceForm.eventDate} onChange={e => setServiceForm(f=>({...f,eventDate:e.target.value}))}/>
                 </div>
                 <div>
-                  <label style={lbl}>Next Reminder</label>
-                  <select style={{ ...inp, cursor:'pointer' }} value={serviceForm.followUpDays} onChange={e=>setServiceForm(f=>({...f,followUpDays:e.target.value}))}>
+                  <label style={LBL}>Next Reminder</label>
+                  <select style={{ ...INP, cursor:'pointer' }} value={serviceForm.followUpDays} onChange={e => setServiceForm(f=>({...f,followUpDays:e.target.value}))}>
                     {FOLLOW_UP_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={lbl}>Amount Charged (Rs.)</label>
-                  <input style={inp} type="number" placeholder="e.g. 850" value={serviceForm.amountCharged} onChange={e=>setServiceForm(f=>({...f,amountCharged:e.target.value}))}/>
+                  <label style={LBL}>Amount Charged (Rs.)</label>
+                  <input style={INP} type="number" placeholder="e.g. 850" value={serviceForm.amountCharged} onChange={e => setServiceForm(f=>({...f,amountCharged:e.target.value}))}/>
                 </div>
                 <div>
-                  <label style={lbl}>Payment Method</label>
-                  <select style={{ ...inp, cursor:'pointer' }} value={serviceForm.paymentMethod} onChange={e=>setServiceForm(f=>({...f,paymentMethod:e.target.value}))}>
+                  <label style={LBL}>Payment Method</label>
+                  <select style={{ ...INP, cursor:'pointer' }} value={serviceForm.paymentMethod} onChange={e => setServiceForm(f=>({...f,paymentMethod:e.target.value}))}>
                     <option value="">Select...</option>
                     <option value="upi">UPI</option>
                     <option value="cash">Cash</option>
@@ -830,23 +841,24 @@ export default function DashboardPage() {
                   </select>
                 </div>
                 <div style={{ gridColumn:'1/-1' }}>
-                  <label style={lbl}>Staff / Doctor Name</label>
-                  <input style={inp} placeholder="e.g. Dr. Priya Sharma" value={serviceForm.staffName} onChange={e=>setServiceForm(f=>({...f,staffName:e.target.value}))}/>
+                  <label style={LBL}>Staff Name</label>
+                  <input style={INP} placeholder="e.g. Dr. Priya Sharma" value={serviceForm.staffName} onChange={e => setServiceForm(f=>({...f,staffName:e.target.value}))}/>
                 </div>
                 <div style={{ gridColumn:'1/-1' }}>
-                  <label style={lbl}>Notes / Observations</label>
-                  <textarea style={{ ...inp, minHeight:80, resize:'vertical' }} placeholder="Vaccine batch no., prescription, observations..." value={serviceForm.notes} onChange={e=>setServiceForm(f=>({...f,notes:e.target.value}))}/>
+                  <label style={LBL}>Notes</label>
+                  <textarea style={{ ...INP, minHeight:80, resize:'vertical' }} placeholder="Observations, notes, batch numbers..." value={serviceForm.notes} onChange={e => setServiceForm(f=>({...f,notes:e.target.value}))}/>
                 </div>
               </div>
               {serviceForm.followUpDays && (
                 <div style={{ background:'rgba(200,168,75,0.08)', border:'1px solid rgba(200,168,75,0.2)', borderRadius:6, padding:'0.85rem 1rem', fontSize:'0.8rem', color:'var(--muted)' }}>
-                  Reminder will be scheduled <strong style={{ color:'var(--gold)' }}>{serviceForm.followUpDays} days</strong> from today on{' '}
-                  <strong style={{ color:'var(--ink)' }}>{new Date(Date.now()+parseInt(serviceForm.followUpDays)*86400000).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</strong>
+                  Reminder scheduled for <strong style={{ color:'var(--ink)' }}>{new Date(Date.now()+parseInt(serviceForm.followUpDays)*86400000).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</strong> — <strong style={{ color:'var(--gold)' }}>{serviceForm.followUpDays} days</strong> from today
                 </div>
               )}
               <div style={{ display:'flex', gap:8, marginTop:'0.25rem' }}>
                 <button type="button" className="sf-btn-ghost" style={{ flex:1, padding:'0.8rem' }} onClick={() => setShowLogService(false)}>Cancel</button>
-                <button type="submit" className="sf-btn-primary" style={{ flex:1, padding:'0.8rem' }}>Log Service and Schedule Reminder</button>
+                <button type="submit" className="sf-btn-primary" style={{ flex:1, padding:'0.8rem', opacity:logSaving?0.7:1 }} disabled={logSaving}>
+                  {logSaving ? 'Saving...' : 'Log Service and Schedule Reminder'}
+                </button>
               </div>
             </form>
           </div>

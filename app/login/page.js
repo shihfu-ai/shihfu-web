@@ -6,8 +6,8 @@ import { api, saveAuth } from '../../lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
+  const [form, setForm]     = useState({ email: '', password: '' });
+  const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
@@ -27,115 +27,155 @@ export default function LoginPage() {
 
   return (
     <div style={{
-      minHeight:'100vh', background:'#111214',
-      display:'flex', alignItems:'center', justifyContent:'center',
-      fontFamily:'inherit', padding:'2rem',
+      minHeight: '100vh',
+      background: 'var(--cream)',
+      display: 'flex',
+      flexDirection: 'column',
     }}>
-      <style>{`
-        .login-input {
-          width:100%; background:#1e2025; border:1px solid rgba(255,255,255,.07);
-          border-radius:6px; padding:.8rem 1rem; font-size:.9rem;
-          color:#e4e6eb; outline:none; transition:border-color .2s;
-          font-family:inherit;
-        }
-        .login-input:focus { border-color:rgba(240,165,0,.4); }
-        .login-input::placeholder { color:#5c6070; }
-      `}</style>
-
-      <div style={{
-        background:'#18191d', border:'1px solid rgba(255,255,255,.07)',
-        borderRadius:12, padding:'2.5rem', width:'100%', maxWidth:420,
+      {/* Nav */}
+      <nav style={{
+        padding: '1.4rem 4rem',
+        borderBottom: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: 'rgba(245,240,232,0.9)',
+        backdropFilter: 'blur(12px)',
       }}>
-        {/* Logo */}
-        <div style={{ textAlign:'center', marginBottom:'2rem' }}>
-          <Link href="/" style={{
-            fontFamily:'Georgia,serif', fontSize:'1.8rem',
-            fontWeight:700, color:'#e4e6eb', textDecoration:'none',
+        <Link href="/" style={{
+          fontFamily: "'Playfair Display', serif",
+          fontSize: '1.4rem',
+          fontWeight: 900,
+          color: 'var(--ink)',
+          textDecoration: 'none',
+          letterSpacing: '-0.02em',
+        }}>
+          Shih<span style={{ color: 'var(--gold)' }}>-Fu</span>
+        </Link>
+        <Link href="/signup" style={{
+          fontSize: '0.85rem',
+          color: 'var(--muted)',
+          textDecoration: 'none',
+          fontWeight: 500,
+        }}>
+          No account?{' '}
+          <span style={{ color: 'var(--gold)', fontWeight: 600 }}>Register free</span>
+        </Link>
+      </nav>
+
+      {/* Main */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '3rem 1.5rem',
+      }}>
+        <div style={{ width: '100%', maxWidth: 420 }}>
+
+          {/* Heading */}
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <h1 style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: '2.2rem',
+              fontWeight: 900,
+              color: 'var(--ink)',
+              lineHeight: 1.1,
+              marginBottom: '0.5rem',
+              letterSpacing: '-0.02em',
+            }}>
+              Welcome back
+            </h1>
+            <p style={{ fontSize: '0.9rem', color: 'var(--muted)', fontWeight: 300 }}>
+              Sign in to your Shih-Fu dashboard
+            </p>
+          </div>
+
+          {/* Card */}
+          <div style={{
+            background: 'white',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '2.5rem',
+            boxShadow: '0 4px 24px rgba(13,13,13,0.06)',
           }}>
-            Shih<span style={{color:'#f0a500'}}>-Fu</span>
-          </Link>
+
+            {error && (
+              <div style={{
+                background: 'rgba(196,83,42,0.08)',
+                border: '1px solid rgba(196,83,42,0.2)',
+                borderRadius: 4,
+                padding: '0.75rem 1rem',
+                marginBottom: '1.5rem',
+                fontSize: '0.82rem',
+                color: 'var(--rust)',
+              }}>{error}</div>
+            )}
+
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <div>
+                <label className="sf-label">Business Email</label>
+                <input
+                  className="sf-input"
+                  type="email"
+                  required
+                  placeholder="hello@yourshop.in"
+                  value={form.email}
+                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="sf-label">Password</label>
+                <input
+                  className="sf-input"
+                  type="password"
+                  required
+                  placeholder="Your password"
+                  value={form.password}
+                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="sf-btn-primary"
+                style={{ width: '100%', marginTop: '0.5rem' }}
+              >
+                {loading ? 'Signing in...' : 'Sign In'}
+              </button>
+            </form>
+
+            <div style={{
+              textAlign: 'center',
+              marginTop: '1.5rem',
+              fontSize: '0.82rem',
+              color: 'var(--muted)',
+            }}>
+              No account yet?{' '}
+              <Link href="/signup" style={{ color: 'var(--gold)', textDecoration: 'none', fontWeight: 600 }}>
+                Register your business
+              </Link>
+            </div>
+          </div>
+
+          {/* Demo credentials */}
           <div style={{
-            fontSize:'.8rem', color:'#9499a6', marginTop:'.5rem',
-            fontFamily:'monospace', letterSpacing:'.05em',
-          }}>Sign in to your dashboard</div>
-        </div>
-
-        {error && (
-          <div style={{
-            background:'rgba(240,82,82,.1)', border:'1px solid rgba(240,82,82,.2)',
-            borderRadius:6, padding:'.75rem 1rem', marginBottom:'1.5rem',
-            fontSize:'.82rem', color:'#f05252',
-          }}>{error}</div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:'1.2rem' }}>
-          <div>
-            <label style={{
-              display:'block', fontFamily:'monospace',
-              fontSize:'.65rem', letterSpacing:'.1em', textTransform:'uppercase',
-              color:'#9499a6', marginBottom:'.5rem',
-            }}>Business Email</label>
-            <input
-              className="login-input"
-              type="email" required
-              placeholder="hello@yourshop.in"
-              value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-            />
+            marginTop: '1.5rem',
+            padding: '1rem 1.25rem',
+            background: 'rgba(200,168,75,0.08)',
+            border: '1px solid rgba(200,168,75,0.2)',
+            borderRadius: 6,
+            fontSize: '0.78rem',
+            color: 'var(--muted)',
+            lineHeight: 1.7,
+          }}>
+            <div style={{ fontWeight: 600, color: 'var(--gold)', marginBottom: '0.3rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.7rem' }}>
+              Demo credentials
+            </div>
+            <div>Email: priya@pawcare.in</div>
+            <div>Password: ShihFu@2024</div>
           </div>
-          <div>
-            <label style={{
-              display:'block', fontFamily:'monospace',
-              fontSize:'.65rem', letterSpacing:'.1em', textTransform:'uppercase',
-              color:'#9499a6', marginBottom:'.5rem',
-            }}>Password</label>
-            <input
-              className="login-input"
-              type="password" required
-              placeholder="Your password"
-              value={form.password}
-              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              background: loading ? '#5c6070' : '#f0a500',
-              color:'#111', border:'none', borderRadius:6,
-              padding:'.9rem', fontSize:'.85rem', fontWeight:700,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontFamily:'inherit', letterSpacing:'.06em',
-              textTransform:'uppercase', transition:'all .2s',
-              marginTop:'.5rem',
-            }}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
-
-        <div style={{
-          textAlign:'center', marginTop:'1.5rem',
-          fontSize:'.82rem', color:'#9499a6',
-        }}>
-          No account yet?{' '}
-          <Link href="/signup" style={{ color:'#f0a500', textDecoration:'none', fontWeight:600 }}>
-            Register your business
-          </Link>
-        </div>
-
-        {/* Demo credentials */}
-        <div style={{
-          marginTop:'1.5rem', padding:'1rem',
-          background:'rgba(240,165,0,.06)', border:'1px solid rgba(240,165,0,.15)',
-          borderRadius:6, fontSize:'.75rem', color:'#9499a6',
-        }}>
-          <div style={{ fontWeight:600, color:'#f0a500', marginBottom:'.4rem', fontFamily:'monospace' }}>
-            Demo credentials
-          </div>
-          <div>Email: priya@pawcare.in</div>
-          <div>Password: ShihFu@2024</div>
         </div>
       </div>
     </div>

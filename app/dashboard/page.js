@@ -217,6 +217,11 @@ export default function DashboardPage() {
   const [showDelete, setShowDelete]       = useState(false);
   const [deletingCustomer, setDeletingCustomer] = useState(null);
 
+  // Customer Profile (view)
+  const [showCustomerProfile, setShowCustomerProfile] = useState(false);
+  const [profileLoading, setProfileLoading]           = useState(false);
+  const [viewingCustomer, setViewingCustomer]         = useState(null);
+
   // Log Service
   const [showLog, setShowLog]     = useState(false);
   const [logSaving, setLogSaving] = useState(false);
@@ -321,27 +326,38 @@ export default function DashboardPage() {
   }
 
   // ── Edit Customer ──────────────────────────────────────────────
-  function openEdit(c) {
+  async function openEdit(c) {
     setEditingId(c.id);
     setEditCustomer({ name:c.name||'', phone:c.phone||'', email:c.email||'', city:c.city||'', address:c.address||'' });
-    // Pre-populate asset from stored data if available
-    const storedAsset = c.entity?.assetData || {};
-    const storedRetention = c.entity?.retentionData || {};
-    const blankA = buildBlankAsset(config);
-    const blankR = buildBlankRetention(config);
-    setEditAsset({ ...blankA, ...storedAsset });
-    setEditRetention({ ...blankR, ...storedRetention });
     const chs = [];
     if (c.opted_in_whatsapp) chs.push('whatsapp');
     if (c.opted_in_sms)      chs.push('sms');
     if (c.opted_in_email)    chs.push('email');
     setEditChannels(chs.length ? chs : [c.preferred_channel || 'whatsapp']);
+
+    const blankA = buildBlankAsset(config);
+    const blankR = buildBlankRetention(config);
+    setEditAsset(blankA);
+    setEditRetention(blankR);
+
+    // The customer list only returns flattened entity_name/entity_type —
+    // fetch the full record to get the stored asset/retention data.
+    try {
+      const full = await api.getCustomer(c.id);
+      const storedEntity = full.data?.entities?.[0] || {};
+      setEditAsset({ ...blankA, ...(storedEntity.asset_data || {}) });
+      setEditRetention({ ...blankR, ...(storedEntity.retention_data || {}) });
+    } catch (err) {
+      showToast(err.message || 'Could not load full customer details','error');
+    }
+
     setShowEdit(true);
   }
 
   async function handleEdit(e) {
     e.preventDefault();
     if (!editCustomer.name?.trim()) { showToast('Customer name is required','error'); return; }
+    if (!/^[6-9]\d{9}$/.test(editCustomer.phone)) { showToast('Enter a valid 10-digit Indian mobile number','error'); return; }
     if (editChannels.length === 0)  { showToast('Select at least one messaging channel','error'); return; }
 
     setEditSaving(true);
@@ -349,6 +365,7 @@ export default function DashboardPage() {
       const entityName = editAsset.entityName || editAsset.petName || '';
       await api.updateCustomer(editingId, {
         name:             editCustomer.name.trim(),
+        phone:            editCustomer.phone.trim(),
         email:            editCustomer.email?.trim()   || undefined,
         city:             editCustomer.city?.trim()    || undefined,
         address:          editCustomer.address?.trim() || undefined,
@@ -370,6 +387,22 @@ export default function DashboardPage() {
     } catch (err) {
       showToast(err.message || 'Failed to update — please try again','error');
     } finally { setEditSaving(false); }
+  }
+
+  // ── Customer Profile (view) ───────────────────────────────────
+  async function openProfile(c) {
+    setShowCustomerProfile(true);
+    setProfileLoading(true);
+    setViewingCustomer(null);
+    try {
+      const full = await api.getCustomer(c.id);
+      setViewingCustomer(full.data);
+    } catch (err) {
+      showToast(err.message || 'Could not load customer profile','error');
+      setShowCustomerProfile(false);
+    } finally {
+      setProfileLoading(false);
+    }
   }
 
   // ── Delete ─────────────────────────────────────────────────────
@@ -604,7 +637,9 @@ export default function DashboardPage() {
                   <tbody>
                     {customers.slice(0,5).map(c => (
                       <tr key={c.id} style={{ borderBottom:'1px solid var(--border)' }}>
-                        <td style={{ padding:'.85rem 1rem', fontSize:'.875rem', fontWeight:600, color:'var(--ink)' }}>{c.name}</td>
+                        <td style={{ padding:'.85rem 1rem', fontSize:'.875rem', fontWeight:600 }}>
+                          <span onClick={() => openProfile(c)} style={{ color:'var(--gold)', cursor:'pointer', textDecoration:'underline', textDecorationColor:'rgba(200,168,75,.35)', textUnderlineOffset:3 }}>{c.name}</span>
+                        </td>
                         <td style={{ padding:'.85rem 1rem', fontSize:'.8rem', color:'var(--muted)' }}>+91 {c.phone}</td>
                         <td style={{ padding:'.85rem 1rem' }}><span className={pill(c.status)}>{c.status}</span></td>
                         <td style={{ padding:'.85rem 1rem' }}><span className={pill(c.preferred_channel)}>{c.preferred_channel}</span></td>
@@ -642,7 +677,9 @@ export default function DashboardPage() {
                     <tbody>
                       {filteredCustomers.map(c => (
                         <tr key={c.id} style={{ borderBottom:'1px solid var(--border)' }}>
-                          <td style={{ padding:'.85rem 1rem', fontSize:'.875rem', fontWeight:600, color:'var(--ink)', whiteSpace:'nowrap' }}>{c.name}</td>
+                          <td style={{ padding:'.85rem 1rem', fontSize:'.875rem', fontWeight:600, whiteSpace:'nowrap' }}>
+                            <span onClick={() => openProfile(c)} style={{ color:'var(--gold)', cursor:'pointer', textDecoration:'underline', textDecorationColor:'rgba(200,168,75,.35)', textUnderlineOffset:3 }}>{c.name}</span>
+                          </td>
                           <td style={{ padding:'.85rem 1rem', fontSize:'.78rem', color:'var(--muted)' }}>+91 {c.phone}</td>
                           <td style={{ padding:'.85rem 1rem', fontSize:'.8rem', color:'var(--muted)' }}>{c.entity_name ? `${c.entity_name}${c.breed_or_model?' · '+c.breed_or_model:''}` : 'Not added'}</td>
                           <td style={{ padding:'.85rem 1rem', fontSize:'.75rem', color:'var(--muted)', whiteSpace:'nowrap' }}>{c.last_visit_at ? new Date(c.last_visit_at).toLocaleDateString('en-IN') : 'Not yet'}</td>
@@ -808,6 +845,138 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CUSTOMER PROFILE (view) */}
+      {showCustomerProfile && (
+        <div style={OVERLAY} onClick={() => setShowCustomerProfile(false)}>
+          <div style={{ ...MBOX, maxWidth:720 }} onClick={e=>e.stopPropagation()}>
+            <div style={MHEAD}>
+              <div>
+                <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.2rem', fontWeight:700, color:'var(--ink)' }}>
+                  {viewingCustomer?.name || 'Customer Profile'}
+                </h3>
+                <div style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:2 }}>Full profile, service history and reminders</div>
+              </div>
+              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                {viewingCustomer && (
+                  <button className="sf-btn-ghost" style={{ padding:'.4rem .9rem', fontSize:'.75rem' }}
+                    onClick={() => { setShowCustomerProfile(false); openEdit(viewingCustomer); }}>Edit</button>
+                )}
+                <button style={CLOSEBTN} onClick={() => setShowCustomerProfile(false)}>x</button>
+              </div>
+            </div>
+
+            <div style={{ padding:'1.5rem' }}>
+              {profileLoading && (
+                <div style={{ padding:'3rem', textAlign:'center', color:'var(--muted)', fontSize:'.875rem' }}>Loading profile...</div>
+              )}
+
+              {!profileLoading && viewingCustomer && (() => {
+                const entity = viewingCustomer.entities?.[0] || null;
+                const assetData     = entity?.asset_data || {};
+                const retentionData = entity?.retention_data || {};
+                return (
+                  <>
+                    {/* Core info */}
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.75rem 1.5rem', marginBottom:'1.25rem' }}>
+                      <div><span style={LBL}>Phone</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>+91 {viewingCustomer.phone}</div></div>
+                      <div><span style={LBL}>Email</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.email || '—'}</div></div>
+                      <div><span style={LBL}>City</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.city || '—'}</div></div>
+                      <div><span style={LBL}>Address</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.address || '—'}</div></div>
+                      <div><span style={LBL}>Status</span><div style={{ marginTop:2 }}><span className={pill(viewingCustomer.status)}>{viewingCustomer.status}</span></div></div>
+                      <div><span style={LBL}>Preferred Channel</span><div style={{ marginTop:2 }}><span className={pill(viewingCustomer.preferred_channel)}>{viewingCustomer.preferred_channel}</span></div></div>
+                    </div>
+
+                    {/* Entity / asset details */}
+                    {entity && (
+                      <div style={{ marginBottom:'1.25rem' }}>
+                        <div style={SECTION_HDR}>{config.assetLabel} <div style={{ flex:1, height:1, background:'var(--border)' }}/></div>
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.75rem 1.5rem' }}>
+                          {config.assetFields.filter(f => assetData[f.key]).map(f => (
+                            <div key={f.key}>
+                              <span style={LBL}>{f.label}</span>
+                              <div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{assetData[f.key]}</div>
+                            </div>
+                          ))}
+                          {!config.assetFields.some(f => assetData[f.key]) && (
+                            <div style={{ fontSize:'.82rem', color:'var(--muted)' }}>No details added yet.</div>
+                          )}
+                        </div>
+
+                        {config.retentionFields.some(f => retentionData[f.key]) && (
+                          <div style={{ marginTop:'1rem' }}>
+                            <div style={{ ...LBL, marginBottom:'.5rem' }}>Retention and Reminder Dates</div>
+                            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.75rem 1.5rem' }}>
+                              {config.retentionFields.filter(f => retentionData[f.key]).map(f => (
+                                <div key={f.key}>
+                                  <span style={LBL}>{f.label}</span>
+                                  <div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{retentionData[f.key]}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Service history */}
+                    <div style={{ marginBottom:'1.25rem' }}>
+                      <div style={SECTION_HDR}>Service History <div style={{ flex:1, height:1, background:'var(--border)' }}/></div>
+                      {viewingCustomer.serviceEvents?.length ? (
+                        <div style={{ border:'1px solid var(--border)', borderRadius:6, overflow:'hidden' }}>
+                          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                            <thead><tr style={{ background:'var(--warm)' }}>
+                              {['Service','Date','Amount','Status'].map(h => <th key={h} style={{ padding:'.6rem .85rem', textAlign:'left', fontSize:'.65rem', fontWeight:500, letterSpacing:'.08em', textTransform:'uppercase', color:'var(--muted)' }}>{h}</th>)}
+                            </tr></thead>
+                            <tbody>
+                              {viewingCustomer.serviceEvents.map(se => (
+                                <tr key={se.id} style={{ borderTop:'1px solid var(--border)' }}>
+                                  <td style={{ padding:'.6rem .85rem', fontSize:'.82rem', color:'var(--ink)' }}>{se.service_type}</td>
+                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{new Date(se.event_date).toLocaleDateString('en-IN')}</td>
+                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{se.amount_charged ? `Rs. ${se.amount_charged}` : '—'}</td>
+                                  <td style={{ padding:'.6rem .85rem' }}><span className={pill(se.status==='completed'?'active':'dormant')}>{se.status}</span></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize:'.82rem', color:'var(--muted)' }}>No service events logged yet.</div>
+                      )}
+                    </div>
+
+                    {/* Reminders */}
+                    <div>
+                      <div style={SECTION_HDR}>Upcoming Reminders <div style={{ flex:1, height:1, background:'var(--border)' }}/></div>
+                      {viewingCustomer.reminders?.length ? (
+                        <div style={{ border:'1px solid var(--border)', borderRadius:6, overflow:'hidden' }}>
+                          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                            <thead><tr style={{ background:'var(--warm)' }}>
+                              {['Reminder','Scheduled','Channel','Status'].map(h => <th key={h} style={{ padding:'.6rem .85rem', textAlign:'left', fontSize:'.65rem', fontWeight:500, letterSpacing:'.08em', textTransform:'uppercase', color:'var(--muted)' }}>{h}</th>)}
+                            </tr></thead>
+                            <tbody>
+                              {viewingCustomer.reminders.map(r => (
+                                <tr key={r.id} style={{ borderTop:'1px solid var(--border)' }}>
+                                  <td style={{ padding:'.6rem .85rem', fontSize:'.82rem', color:'var(--ink)' }}>{r.reminder_type}</td>
+                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{new Date(r.scheduled_at).toLocaleDateString('en-IN')}</td>
+                                  <td style={{ padding:'.6rem .85rem' }}><span className={pill(r.channel)}>{r.channel}</span></td>
+                                  <td style={{ padding:'.6rem .85rem' }}><span className={pill(r.status==='scheduled'?'overdue':'active')}>{r.status}</span></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize:'.82rem', color:'var(--muted)' }}>No reminders scheduled yet.</div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </div>
       )}

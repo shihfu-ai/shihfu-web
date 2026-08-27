@@ -34,7 +34,7 @@ export default function LandingPage() {
         .proof-card { background:var(--cream); border:1px solid var(--border); border-radius:8px; padding:2rem; }
       `}</style>
 
-      {/* NAV — Fix #2: renamed to Sign In / Sign Up */}
+      {/* NAV - Fix #2: renamed to Sign In / Sign Up */}
       <nav style={{ position:'fixed', top:0, left:0, right:0, zIndex:100, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.25rem 4rem', background:'rgba(245,240,232,0.9)', backdropFilter:'blur(12px)', borderBottom:'1px solid var(--border)' }}>
         <Link href="/" style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.4rem', fontWeight:900, letterSpacing:'-0.02em', color:'#0d0d0d', textDecoration:'none' }}>
           Shih<span style={{ color:'#c8a84b' }}>-Fu</span>
@@ -43,7 +43,7 @@ export default function LandingPage() {
           <a href="#how" className="nav-link">How It Works</a>
           <a href="#features" className="nav-link">Features</a>
           <a href="#contact" className="nav-link">Contact</a>
-          {/* Fix #2 — Sign In / Sign Up button */}
+          {/* Fix #2 - Sign In / Sign Up button */}
           <Link href="/login" style={{ fontSize:'.85rem', fontWeight:600, color:'var(--muted)', textDecoration:'none', letterSpacing:'.05em', paddingRight:'1rem', borderRight:'1px solid var(--border)' }}>Sign In</Link>
           <Link href="/signup" className="btn-primary" style={{ padding:'.6rem 1.4rem', fontSize:'.82rem' }}>Sign Up Free</Link>
         </div>
@@ -62,10 +62,10 @@ export default function LandingPage() {
             <br/>again.
           </h1>
           <p style={{ fontSize:'1.05rem', lineHeight:1.75, color:'#6b6456', maxWidth:480, marginBottom:'2.5rem', fontWeight:300 }}>
-            Shih-Fu automates follow-ups, service reminders, and re-engagement for any service-based business across India — so no customer ever slips through the cracks.
+            Shih-Fu automates follow-ups, service reminders, and re-engagement for any service-based business across India - so no customer ever slips through the cracks.
           </p>
           <div style={{ display:'flex', gap:'1rem', alignItems:'center', flexWrap:'wrap' }}>
-            <Link href="/signup" className="btn-primary">Start Free — No Card Needed</Link>
+            <Link href="/signup" className="btn-primary">Start Free - No Card Needed</Link>
             <a href="#how" className="btn-outline">See how it works</a>
           </div>
           <div style={{ marginTop:'2rem', fontSize:'.8rem', color:'var(--muted)', display:'flex', gap:'1.5rem', flexWrap:'wrap' }}>
@@ -83,10 +83,10 @@ export default function LandingPage() {
               <span style={{ background:'#ecfdf5', color:'#059669', fontSize:'.72rem', fontWeight:600, padding:'.25rem .7rem', borderRadius:20 }}>4 Active</span>
             </div>
             {[
-              { initials:'PS', name:'Priya Sharma', meta:'Wellness Clinic — Annual checkup due', tag:'Due Today', tagBg:'#fef3c7', tagColor:'#92400e' },
-              { initials:'RM', name:'Rahul Menon',  meta:'AutoFix Garage — Oil change reminder', tag:'SMS Sent', tagBg:'#ecfdf5', tagColor:'#065f46' },
-              { initials:'SK', name:'Sunita Kumar', meta:'Glam Studio — Colour retouch cycle', tag:'In 3 Days', tagBg:'#eff6ff', tagColor:'#1e40af' },
-              { initials:'VA', name:'Vikram Anand', meta:'QuickServe — Maintenance due', tag:'WhatsApp', tagBg:'#ecfdf5', tagColor:'#065f46' },
+              { initials:'PS', name:'Priya Sharma', meta:'Wellness Clinic - Annual checkup due', tag:'Due Today', tagBg:'#fef3c7', tagColor:'#92400e' },
+              { initials:'RM', name:'Rahul Menon',  meta:'AutoFix Garage - Oil change reminder', tag:'SMS Sent', tagBg:'#ecfdf5', tagColor:'#065f46' },
+              { initials:'SK', name:'Sunita Kumar', meta:'Glam Studio - Colour retouch cycle', tag:'In 3 Days', tagBg:'#eff6ff', tagColor:'#1e40af' },
+              { initials:'VA', name:'Vikram Anand', meta:'QuickServe - Maintenance due', tag:'WhatsApp', tagBg:'#ecfdf5', tagColor:'#065f46' },
             ].map((r, i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', gap:'.9rem', padding:'.75rem', background:'#f0e9d6', borderRadius:8, marginBottom:'.6rem' }}>
                 <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(200,168,75,0.15)', border:'1px solid rgba(200,168,75,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.72rem', fontWeight:700, color:'#c8a84b', flexShrink:0 }}>{r.initials}</div>
@@ -119,7 +119,7 @@ export default function LandingPage() {
         ))}
       </div>
 
-      {/* Fix #6 — GENERIC WHO IT'S FOR (replaces industry-specific section) */}
+      {/* Fix #6 - GENERIC WHO IT'S FOR (replaces industry-specific section) */}
       <section id="features" style={{ padding:'7rem 4rem', background:'#f0e9d6' }}>
         <div className="fade-up" style={{ fontSize:'.75rem', fontWeight:500, letterSpacing:'.16em', textTransform:'uppercase', color:'#c8a84b', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'.6rem' }}>
           <span style={{ width:24, height:1, background:'#c8a84b', display:'block' }}></span>
@@ -130,41 +130,41 @@ export default function LandingPage() {
           <em style={{ fontStyle:'italic', color:'var(--rust)' }}>can use Shih-Fu.</em>
         </h2>
         <p className="fade-up" style={{ color:'var(--muted)', maxWidth:600, lineHeight:1.75, fontSize:'.95rem', marginBottom:'2.5rem', fontWeight:300 }}>
-          Whether you run a clinic, a garage, a salon, a repair shop, a fitness studio, a home services company, or any business where customers come back — Shih-Fu keeps the relationship alive automatically.
+          Whether you run a clinic, a garage, a salon, a repair shop, a fitness studio, a home services company, or any business where customers come back - Shih-Fu keeps the relationship alive automatically.
         </p>
 
-        {/* Business type pills — generic */}
+        {/* Business type pills - generic */}
         <div className="fade-up" style={{ display:'flex', flexWrap:'wrap', gap:'.6rem', marginBottom:'3.5rem' }}>
           {['Clinics and Healthcare','Auto Repair and Garages','Salons and Spas','Fitness and Wellness','Home Services','Repair Shops','Pet Services','Education and Coaching','Real Estate','Retail Stores','Hospitality','and many more...'].map(t => (
             <span key={t} className="industry-pill">{t}</span>
           ))}
         </div>
 
-        {/* Fix #4 — Features section replaces pricing */}
+        {/* Fix #4 - Features section replaces pricing */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.25rem' }}>
           {[
             {
               icon:'A',
               title:'Automated Follow-Ups',
-              desc:'Set it once. Shih-Fu automatically sends reminders on the right day via WhatsApp, SMS, or Email — without you lifting a finger.',
+              desc:'Set it once. Shih-Fu automatically sends reminders on the right day via WhatsApp, SMS, or Email - without you lifting a finger.',
               highlights:['Time-based triggers','Condition-based rules','Multi-step sequences'],
             },
             {
               icon:'B',
               title:'Customer Lifecycle Tracking',
-              desc:'Every visit, purchase, and service is logged. Know exactly who is active, who is dormant, and who is about to churn — before it happens.',
+              desc:'Every visit, purchase, and service is logged. Know exactly who is active, who is dormant, and who is about to churn - before it happens.',
               highlights:['Full service history','Lifetime value tracking','Churn risk alerts'],
             },
             {
               icon:'C',
               title:'WhatsApp, SMS and Email',
-              desc:'Reach customers on the channels they actually use. Messages go out in your business name — customers never see Shih-Fu.',
+              desc:'Reach customers on the channels they actually use. Messages go out in your business name - customers never see Shih-Fu.',
               highlights:['500M+ WhatsApp users in India','TRAI DLT compliant SMS','Branded email reminders'],
             },
             {
               icon:'D',
               title:'Revenue Recovery Dashboard',
-              desc:'See exactly how much revenue you are losing to missed follow-ups — and how much you have recovered through automated reminders.',
+              desc:'See exactly how much revenue you are losing to missed follow-ups - and how much you have recovered through automated reminders.',
               highlights:['Revenue at risk view','Reactivation tracking','Reminder ROI reports'],
             },
             {
@@ -176,7 +176,7 @@ export default function LandingPage() {
             {
               icon:'F',
               title:'Works in Your Language',
-              desc:'Send reminders in the language your customers speak — Hindi, Tamil, Telugu, Kannada, Malayalam, Marathi, Gujarati, Bengali, and more.',
+              desc:'Send reminders in the language your customers speak - Hindi, Tamil, Telugu, Kannada, Malayalam, Marathi, Gujarati, Bengali, and more.',
               highlights:['10 Indian languages','Per-customer language preference','Bilingual message templates'],
             },
           ].map((f, i) => (
@@ -258,7 +258,7 @@ export default function LandingPage() {
         <div style={{ background:'rgba(245,240,232,.06)', border:'1px solid rgba(245,240,232,.1)', borderRadius:12, padding:'2rem' }}>
           <div style={{ fontSize:'.7rem', letterSpacing:'.12em', textTransform:'uppercase', color:'#e8c96a', marginBottom:'1.5rem', fontWeight:500 }}>Sample Messages</div>
           {[
-            { ch:'WhatsApp', bg:'rgba(37,211,102,.06)', border:'rgba(37,211,102,.3)', msg:'Namaste Priya! Aapki annual service ka time aa gaya hai. Aaj hi appointment book karein — reply YES karein.' },
+            { ch:'WhatsApp', bg:'rgba(37,211,102,.06)', border:'rgba(37,211,102,.3)', msg:'Namaste Priya! Aapki annual service ka time aa gaya hai. Aaj hi appointment book karein - reply YES karein.' },
             { ch:'SMS',      bg:'rgba(59,130,246,.06)', border:'rgba(59,130,246,.3)', msg:'Dear Rahul, your next service is due. Book your appointment today. Reply BOOK to confirm.' },
             { ch:'Email',    bg:'rgba(200,168,75,.06)',  border:'rgba(200,168,75,.3)',  msg:'Hi Sunita, it has been a while since your last visit. We have a special offer waiting for you this month.' },
           ].map((m, i) => (
@@ -282,7 +282,7 @@ export default function LandingPage() {
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.5rem' }}>
           {[
             { stars:5, text:'We used to lose 30 to 40 percent of our annual customers simply because we forgot to send reminders. Shih-Fu ended that problem completely.', name:'Dr. Priya Nair', biz:'PawCare Clinic, Bengaluru' },
-            { stars:5, text:'Our rebooking rate went from 42 percent to 71 percent in 90 days. The WhatsApp reminders feel personal — clients think I message them personally.', name:'Deepika Iyer', biz:'Glam Studio, Mumbai' },
+            { stars:5, text:'Our rebooking rate went from 42 percent to 71 percent in 90 days. The WhatsApp reminders feel personal - clients think I message them personally.', name:'Deepika Iyer', biz:'Glam Studio, Mumbai' },
             { stars:5, text:'I have 800 plus customers. Before Shih-Fu, maybe 60 came back regularly. Now my service bay is booked two weeks out. The ROI is undeniable.', name:'Suresh Anand', biz:'SpeedTrack Auto, Chennai' },
           ].map((p, i) => (
             <div key={i} className={`proof-card card-hover fade-up`} style={{ transitionDelay:`${i*0.1}s` }}>
@@ -297,7 +297,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA BANNER — Fix #2: sign in / sign up options */}
+      {/* CTA BANNER - Fix #2: sign in / sign up options */}
       <section id="contact" style={{ background:'#0d0d0d', padding:'6rem 4rem', textAlign:'center', position:'relative', overflow:'hidden' }}>
         <h2 className="fade-up" style={{ fontFamily:"'Playfair Display',serif", fontSize:'clamp(2.2rem,5vw,4rem)', fontWeight:900, color:'#f5f0e8', lineHeight:1.05, marginBottom:'1.5rem' }}>
           Your customers are waiting<br/>to hear from{' '}

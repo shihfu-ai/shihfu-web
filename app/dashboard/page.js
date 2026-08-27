@@ -19,7 +19,7 @@ function buildBlankRetention(config) {
   return blank;
 }
 
-// ─── Shared style constants (module level — prevents re-mount bug) ──
+// ─── Shared style constants (module level - prevents re-mount bug) ──
 const INP = {
   width:'100%', background:'white', border:'1px solid var(--border)',
   borderRadius:4, padding:'.75rem 1rem', fontFamily:"'DM Sans',sans-serif",
@@ -42,7 +42,7 @@ const MBOX     = { background:'white', border:'1px solid var(--border)', borderR
 const MHEAD    = { padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, background:'white', zIndex:1 };
 const CLOSEBTN = { background:'var(--warm)', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', width:28, height:28, cursor:'pointer', fontSize:'.9rem', display:'flex', alignItems:'center', justifyContent:'center' };
 
-// ─── DynamicField — renders one field from a config entry ─────────
+// ─── DynamicField - renders one field from a config entry ─────────
 // MUST be defined at module level to prevent the cursor/typing bug.
 function DynamicField({ field, value, onChange }) {
   const style = field.type === 'date'
@@ -69,7 +69,7 @@ function DynamicField({ field, value, onChange }) {
   );
 }
 
-// ─── CustomerFormFields — MUST be outside DashboardPage ───────────
+// ─── CustomerFormFields - MUST be outside DashboardPage ───────────
 // Defining inside causes React to unmount/remount on every keystroke.
 function CustomerFormFields({
   customer, setCustomer,
@@ -143,7 +143,7 @@ function CustomerFormFields({
       <div>
         <div style={SECTION_HDR}>{config.assetLabel} <div style={{ flex:1, height:1, background:'var(--border)' }}/></div>
         <div style={{ fontSize:'.78rem', color:'var(--muted)', marginBottom:'.75rem', fontWeight:300 }}>
-          Optional — add details about the {config.assetName?.toLowerCase()} you will be servicing.
+          Optional - add details about the {config.assetName?.toLowerCase()} you will be servicing.
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
           {config.assetFields.map((f, i) => (
@@ -321,7 +321,7 @@ export default function DashboardPage() {
       resetAdd();
       await loadData();
     } catch (err) {
-      showToast(err.message || 'Failed to add customer — please try again','error');
+      showToast(err.message || 'Failed to add customer - please try again','error');
     } finally { setAddSaving(false); }
   }
 
@@ -340,7 +340,7 @@ export default function DashboardPage() {
     setEditAsset(blankA);
     setEditRetention(blankR);
 
-    // The customer list only returns flattened entity_name/entity_type —
+    // The customer list only returns flattened entity_name/entity_type -
     // fetch the full record to get the stored asset/retention data.
     try {
       const full = await api.getCustomer(c.id);
@@ -385,7 +385,7 @@ export default function DashboardPage() {
       setEditingId(null);
       await loadData();
     } catch (err) {
-      showToast(err.message || 'Failed to update — please try again','error');
+      showToast(err.message || 'Failed to update - please try again','error');
     } finally { setEditSaving(false); }
   }
 
@@ -516,7 +516,7 @@ export default function DashboardPage() {
       {/* SIDEBAR */}
       <aside style={{ background:'white', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
         <div style={{ padding:'1.5rem 1.5rem 1rem', borderBottom:'1px solid var(--border)' }}>
-          {/* Logo — plain text, not a link */}
+          {/* Logo - plain text, not a link */}
           <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.4rem', fontWeight:900, color:'var(--ink)', letterSpacing:'-0.02em', userSelect:'none' }}>
             Shih<span style={{ color:'var(--gold)' }}>-Fu</span>
           </div>
@@ -612,7 +612,7 @@ export default function DashboardPage() {
 
               <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden', marginBottom:16 }}>
                 <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                  <span style={{ fontSize:'.85rem', fontWeight:600, color:'var(--ink)' }}>Reminder Queue — This Week</span>
+                  <span style={{ fontSize:'.85rem', fontWeight:600, color:'var(--ink)' }}>Reminder Queue - This Week</span>
                   <button className="sf-btn-primary" style={{ padding:'.4rem 1rem', fontSize:'.75rem' }} onClick={() => setActivePanel('reminders')}>View All</button>
                 </div>
                 <div style={{ display:'flex' }}>
@@ -883,9 +883,9 @@ export default function DashboardPage() {
                     {/* Core info */}
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.75rem 1.5rem', marginBottom:'1.25rem' }}>
                       <div><span style={LBL}>Phone</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>+91 {viewingCustomer.phone}</div></div>
-                      <div><span style={LBL}>Email</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.email || '—'}</div></div>
-                      <div><span style={LBL}>City</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.city || '—'}</div></div>
-                      <div><span style={LBL}>Address</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.address || '—'}</div></div>
+                      <div><span style={LBL}>Email</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.email || '-'}</div></div>
+                      <div><span style={LBL}>City</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.city || '-'}</div></div>
+                      <div><span style={LBL}>Address</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.address || '-'}</div></div>
                       <div><span style={LBL}>Status</span><div style={{ marginTop:2 }}><span className={pill(viewingCustomer.status)}>{viewingCustomer.status}</span></div></div>
                       <div><span style={LBL}>Preferred Channel</span><div style={{ marginTop:2 }}><span className={pill(viewingCustomer.preferred_channel)}>{viewingCustomer.preferred_channel}</span></div></div>
                     </div>
@@ -936,7 +936,7 @@ export default function DashboardPage() {
                                 <tr key={se.id} style={{ borderTop:'1px solid var(--border)' }}>
                                   <td style={{ padding:'.6rem .85rem', fontSize:'.82rem', color:'var(--ink)' }}>{se.service_type}</td>
                                   <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{new Date(se.event_date).toLocaleDateString('en-IN')}</td>
-                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{se.amount_charged ? `Rs. ${se.amount_charged}` : '—'}</td>
+                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{se.amount_charged ? `Rs. ${se.amount_charged}` : '-'}</td>
                                   <td style={{ padding:'.6rem .85rem' }}><span className={pill(se.status==='completed'?'active':'dormant')}>{se.status}</span></td>
                                 </tr>
                               ))}
@@ -1086,7 +1086,7 @@ export default function DashboardPage() {
                 <div style={{ background:'rgba(200,168,75,.08)', border:'1px solid rgba(200,168,75,.2)', borderRadius:6, padding:'.85rem 1rem', fontSize:'.8rem', color:'var(--muted)' }}>
                   Reminder scheduled for{' '}
                   <strong style={{ color:'var(--ink)' }}>{new Date(Date.now()+parseInt(serviceForm.followUpDays)*86400000).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</strong>
-                  {' '}— <strong style={{ color:'var(--gold)' }}>{serviceForm.followUpDays} days</strong> from today
+                  {' '}- <strong style={{ color:'var(--gold)' }}>{serviceForm.followUpDays} days</strong> from today
                 </div>
               )}
 

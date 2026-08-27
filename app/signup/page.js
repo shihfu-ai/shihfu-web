@@ -131,7 +131,7 @@ export default function SignupPage() {
     if (!form.vertical) return 'Not selected';
     if (form.vertical === 'healthcare') {
       const sub = form.healthcareSubType === 'healthcare_eye' ? 'Eye Clinic' : 'Dental Clinic';
-      return `Healthcare and Clinics — ${sub}`;
+      return `Healthcare and Clinics - ${sub}`;
     }
     return SIGNUP_VERTICALS.find(v => v.value === form.vertical)?.label || form.vertical;
   };
@@ -251,7 +251,7 @@ export default function SignupPage() {
                           {isGroup && <div style={{ fontSize:'.78rem', color:'var(--muted)', marginTop:'.2rem', fontWeight:300 }}>Select clinic type below after choosing</div>}
                         </div>
 
-                        {/* Healthcare sub-type selector — shown only when healthcare is selected */}
+                        {/* Healthcare sub-type selector - shown only when healthcare is selected */}
                         {isGroup && isSelected && (
                           <div style={{ marginTop:'.5rem', marginLeft:'1rem', display:'flex', gap:'.6rem' }}>
                             {v.subTypes.map(sub => (

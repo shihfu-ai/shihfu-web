@@ -8,7 +8,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata = {
-  title: 'Shih-Fu — Never Lose a Customer Again',
+  title: 'ShihFu AI',
   description: 'Retention-first CRM for Indian service businesses. Automate follow-ups for veterinary clinics, salons, and auto repair shops.',
 };
 

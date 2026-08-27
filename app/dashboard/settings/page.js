@@ -335,10 +335,10 @@ export default function SettingsPage() {
 
               <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
 
-                {/* Step 1 — Current password */}
+                {/* Step 1 - Current password */}
                 <div style={{ padding:'1.25rem', background:'var(--warm)', borderRadius:8, border:'1px solid var(--border)' }}>
                   <div style={{ fontSize:'0.72rem', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:'0.75rem' }}>
-                    Step 1 — Verify Current Password
+                    Step 1 - Verify Current Password
                   </div>
                   <label style={lbl}>Current Password</label>
                   <div style={{ display:'flex', gap:'0.75rem' }}>
@@ -355,10 +355,10 @@ export default function SettingsPage() {
                   )}
                 </div>
 
-                {/* Step 2 — New password (only enabled after verification) */}
+                {/* Step 2 - New password (only enabled after verification) */}
                 <div style={{ padding:'1.25rem', background: pwVerified ? 'white' : 'var(--warm)', borderRadius:8, border:'1px solid var(--border)', opacity: pwVerified ? 1 : 0.5, transition:'opacity .3s' }}>
                   <div style={{ fontSize:'0.72rem', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--muted)', marginBottom:'0.75rem' }}>
-                    Step 2 — Set New Password
+                    Step 2 - Set New Password
                     {!pwVerified && <span style={{ marginLeft:'0.5rem', fontWeight:400, textTransform:'none', letterSpacing:0 }}>(verify current password first)</span>}
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>

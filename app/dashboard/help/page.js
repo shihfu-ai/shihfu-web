@@ -28,7 +28,7 @@ const FAQS = [
       },
       {
         q: 'Will customers know the messages are sent by Shih-Fu?',
-        a: 'No. Every message is sent in your business name. Customers see your clinic, salon, or garage name — not Shih-Fu. The platform works invisibly in the background.',
+        a: 'No. Every message is sent in your business name. Customers see your clinic, salon, or garage name - not Shih-Fu. The platform works invisibly in the background.',
       },
       {
         q: 'How do I set up WhatsApp Business messaging?',

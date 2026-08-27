@@ -206,7 +206,7 @@ export default function LoginPage() {
                     value={signUp.email} onChange={e=>setSignUp(f=>({...f,email:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
                 </div>
 
-                {/* Business type — all 9 verticals */}
+                {/* Business type - all 9 verticals */}
                 <div>
                   <label style={lbl}>Business Type *</label>
                   <select style={sel} value={signUp.vertical} onChange={e=>setSignUp(f=>({...f,vertical:e.target.value,healthcareSubType:''}))}>
@@ -218,7 +218,7 @@ export default function LoginPage() {
                     ))}
                   </select>
 
-                  {/* Healthcare sub-type — shown when healthcare is selected */}
+                  {/* Healthcare sub-type - shown when healthcare is selected */}
                   {signUp.vertical === 'healthcare' && (
                     <div style={{ marginTop:'.75rem', display:'flex', gap:'.6rem' }}>
                       {[{value:'healthcare_eye',label:'Eye Clinic'},{value:'healthcare_dental',label:'Dental Clinic'}].map(sub => (

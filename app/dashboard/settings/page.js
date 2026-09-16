@@ -1,10 +1,21 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getStaff, isLoggedIn, api } from '../../../lib/api';
 
+// useSearchParams() requires a Suspense boundary during static
+// prerendering, or `next build` fails outright (not just a dev-mode
+// warning) - Next.js bails the whole build on it.
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <SettingsPageInner />
+    </Suspense>
+  );
+}
+
+function SettingsPageInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const fileRef    = useRef(null);

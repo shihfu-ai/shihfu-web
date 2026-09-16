@@ -44,10 +44,29 @@ const CLOSEBTN = { background:'var(--warm)', border:'1px solid var(--border)', b
 
 // ─── DynamicField - renders one field from a config entry ─────────
 // MUST be defined at module level to prevent the cursor/typing bug.
-function DynamicField({ field, value, onChange }) {
-  const style = field.type === 'date'
-    ? INP
-    : INP;
+//
+// A field can depend on one or more sibling fields (e.g. Breed depends
+// on Pet Type; Model depends on Make which depends on Vehicle Type).
+// `dependsOn` names the parent key(s); `optionsMap` is keyed by the
+// parent value ("Dog", "Cat", ...) or, for multi-parent fields, by
+// each parent value joined with "::" in dependsOn order ("Car::Maruti
+// Suzuki"). `allValues` is the full asset object so a field can look
+// up its parent(s)' current value.
+function DynamicField({ field, value, onChange, allValues }) {
+  if (field.type === 'select' && field.dependsOn) {
+    const depKeys = Array.isArray(field.dependsOn) ? field.dependsOn : [field.dependsOn];
+    const depValues = depKeys.map(k => allValues?.[k]);
+    const ready = depValues.every(Boolean);
+    const options = ready ? (field.optionsMap?.[depValues.join('::')] || []) : [];
+
+    return (
+      <select style={{ ...INP, cursor: ready ? 'pointer' : 'not-allowed' }} value={value||''} disabled={!ready}
+        onChange={e => onChange(field.key, e.target.value)}>
+        <option value="">{ready ? 'Select...' : `Select ${field.dependsOnLabel || 'the field above'} first`}</option>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  }
 
   if (field.type === 'select') {
     return (
@@ -60,7 +79,7 @@ function DynamicField({ field, value, onChange }) {
 
   return (
     <input
-      style={style}
+      style={INP}
       type={field.type === 'date' ? 'date' : 'text'}
       placeholder={field.placeholder || ''}
       value={value||''}
@@ -82,7 +101,30 @@ function CustomerFormFields({
     setChannels(prev => prev.includes(ch) ? prev.filter(c=>c!==ch) : [...prev, ch]);
   }
 
-  function updateAsset(key, val)     { setAsset(a => ({ ...a, [key]: val })); }
+  // Changing a field clears any field(s) that cascade from it (directly
+  // or transitively) — e.g. picking a new Vehicle Type clears Make,
+  // which in turn clears Model — so a stale, no-longer-valid selection
+  // never lingers.
+  function updateAsset(key, val) {
+    setAsset(a => {
+      const next = { ...a, [key]: val };
+      const cleared = new Set([key]);
+      let progress = true;
+      while (progress) {
+        progress = false;
+        for (const f of config.assetFields) {
+          if (cleared.has(f.key) || !next[f.key]) continue;
+          const deps = Array.isArray(f.dependsOn) ? f.dependsOn : (f.dependsOn ? [f.dependsOn] : []);
+          if (deps.some(d => cleared.has(d))) {
+            next[f.key] = '';
+            cleared.add(f.key);
+            progress = true;
+          }
+        }
+      }
+      return next;
+    });
+  }
   function updateRetention(key, val) { setRetention(r => ({ ...r, [key]: val })); }
 
   return (
@@ -149,7 +191,7 @@ function CustomerFormFields({
           {config.assetFields.map((f, i) => (
             <div key={f.key} style={{ gridColumn: i === 0 || f.key === 'medicalNotes' || f.key === 'propertyAddress' || f.key === 'preferences' || f.key === 'notes' || f.key === 'specialInstructions' || f.key === 'allergies' || f.key === 'ongoingTreatments' || f.key === 'pestHistory' || f.key === 'problemAreas' ? '1/-1' : 'auto' }}>
               <label style={LBL}>{f.label}{f.required ? ' *' : ''}</label>
-              <DynamicField field={f} value={asset[f.key]} onChange={updateAsset}/>
+              <DynamicField field={f} value={asset[f.key]} onChange={updateAsset} allValues={asset}/>
             </div>
           ))}
         </div>
@@ -191,6 +233,7 @@ export default function DashboardPage() {
   const [reminders, setReminders]             = useState([]);
   const [reminderSummary, setReminderSummary] = useState({});
   const [events, setEvents]                   = useState([]);
+  const [campaigns, setCampaigns]             = useState([]);
   const [loading, setLoading]                 = useState(true);
   const [search, setSearch]                   = useState('');
   const [toast, setToast]                     = useState(null);
@@ -221,6 +264,15 @@ export default function DashboardPage() {
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
   const [profileLoading, setProfileLoading]           = useState(false);
   const [viewingCustomer, setViewingCustomer]         = useState(null);
+
+  // Send All (bulk campaign)
+  const [showCampaign, setShowCampaign]     = useState(false);
+  const [campaignSaving, setCampaignSaving] = useState(false);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [campaignForm, setCampaignForm] = useState({
+    label:'', messageBody:'', channels:['whatsapp'],
+    when:'now', scheduledDate: todayStr, scheduledTime:'10:00',
+  });
 
   // Log Service
   const [showLog, setShowLog]     = useState(false);
@@ -255,18 +307,20 @@ export default function DashboardPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [dash, custs, rems, remSum, evs] = await Promise.all([
+      const [dash, custs, rems, remSum, evs, camps] = await Promise.all([
         api.getDashboard().catch(()=>({})),
         api.getCustomers({ limit:50 }).catch(()=>({ data:[] })),
         api.getReminders({ limit:50 }).catch(()=>({ data:[] })),
         api.getReminderSummary().catch(()=>({ data:{} })),
         api.getServiceEvents({ limit:20 }).catch(()=>({ data:[] })),
+        api.getCampaigns().catch(()=>({ data:[] })),
       ]);
       setDashboard(dash.data || {});
       setCustomers(custs.data || []);
       setReminders(rems.data || []);
       setReminderSummary(remSum.data || {});
       setEvents(evs.data || []);
+      setCampaigns(camps.data || []);
     } catch { showToast('Something went wrong loading data','error'); }
     finally   { setLoading(false); }
   }
@@ -416,6 +470,51 @@ export default function DashboardPage() {
       setDeletingCustomer(null);
       await loadData();
     } catch (err) { showToast(err.message || 'Failed','error'); }
+  }
+
+  // ── Send All (bulk campaign) ──────────────────────────────────
+  function resetCampaign() {
+    setCampaignForm({ label:'', messageBody:'', channels:['whatsapp'], when:'now', scheduledDate:todayStr, scheduledTime:'10:00' });
+  }
+
+  function toggleCampaignChannel(ch) {
+    setCampaignForm(f => ({ ...f, channels: f.channels.includes(ch) ? f.channels.filter(c=>c!==ch) : [...f.channels, ch] }));
+  }
+
+  async function handleSendCampaign(e) {
+    e.preventDefault();
+    if (!campaignForm.label.trim())       { showToast('Give this campaign a name, e.g. "Diwali Greetings"','error'); return; }
+    if (!campaignForm.messageBody.trim()) { showToast('Write the message to send','error'); return; }
+    if (campaignForm.channels.length === 0) { showToast('Select at least one channel','error'); return; }
+
+    const scheduledAt = campaignForm.when === 'now'
+      ? new Date().toISOString()
+      : new Date(`${campaignForm.scheduledDate}T${campaignForm.scheduledTime}`).toISOString();
+
+    if (campaignForm.when === 'later' && new Date(scheduledAt) <= new Date()) {
+      showToast('Pick a date and time in the future','error'); return;
+    }
+
+    setCampaignSaving(true);
+    try {
+      const res = await api.createCampaign({
+        label:       campaignForm.label.trim(),
+        messageBody: campaignForm.messageBody.trim(),
+        channels:    campaignForm.channels,
+        scheduledAt,
+      });
+      showToast(res.message || 'Campaign saved');
+      setShowCampaign(false);
+      resetCampaign();
+      await loadData();
+    } catch (err) {
+      showToast(err.message || 'Failed to send campaign','error');
+    } finally { setCampaignSaving(false); }
+  }
+
+  async function handleCancelCampaign(id) {
+    try { await api.cancelCampaign(id); showToast('Campaign cancelled'); await loadData(); }
+    catch (err) { showToast(err.message || 'Failed','error'); }
   }
 
   // ── Log Service ────────────────────────────────────────────────
@@ -661,8 +760,46 @@ export default function DashboardPage() {
                   <div className="sf-section-label" style={{ marginBottom:'.25rem' }}>Customer Management</div>
                   <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.5rem', fontWeight:700, color:'var(--ink)' }}>All Customers</h2>
                 </div>
-                <button className="sf-btn-primary" onClick={() => setShowAdd(true)}>+ Add Customer</button>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="sf-btn-ghost" onClick={() => setShowCampaign(true)}>Send All</button>
+                  <button className="sf-btn-primary" onClick={() => setShowAdd(true)}>+ Add Customer</button>
+                </div>
               </div>
+
+              {campaigns.length > 0 && (
+                <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden', marginBottom:16 }}>
+                  <div style={{ padding:'.85rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <span style={{ fontSize:'.85rem', fontWeight:600, color:'var(--ink)' }}>Festival / Promo Campaigns</span>
+                    <span style={{ fontSize:'.72rem', color:'var(--muted)' }}>{campaigns.filter(c=>c.status==='scheduled').length} upcoming</span>
+                  </div>
+                  <div>
+                    {campaigns.slice(0,6).map(c => (
+                      <div key={c.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'.85rem 1.25rem', borderBottom:'1px solid var(--border)' }}>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:'.85rem', fontWeight:600, color:'var(--ink)' }}>{c.label}</div>
+                          <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.message_body}</div>
+                          <div style={{ marginTop:4, display:'flex', gap:4 }}>
+                            {c.channels?.map(ch => <span key={ch} className={pill(ch)} style={{ fontSize:'.62rem' }}>{ch}</span>)}
+                          </div>
+                        </div>
+                        <div style={{ fontSize:'.75rem', color:'var(--muted)', flexShrink:0, textAlign:'right' }}>
+                          {new Date(c.scheduled_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
+                          <div style={{ marginTop:4 }}>
+                            <span className={pill(c.status==='sent'?'active':c.status==='cancelled'||c.status==='failed'?'dormant':'overdue')} style={{ fontSize:'.62rem' }}>{c.status}</span>
+                          </div>
+                        </div>
+                        {c.status === 'scheduled' && (
+                          <button onClick={() => handleCancelCampaign(c.id)} style={{ padding:'5px 12px', borderRadius:4, fontSize:'.72rem', fontWeight:500, cursor:'pointer', border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', fontFamily:'inherit', flexShrink:0 }}>Cancel</button>
+                        )}
+                        {(c.status==='sent'||c.status==='sending') && (
+                          <div style={{ fontSize:'.68rem', color:'var(--muted)', flexShrink:0 }}>{c.sent_count} sent{c.skipped_count?`, ${c.skipped_count} skipped`:''}{c.failed_count?`, ${c.failed_count} failed`:''}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
                 <div style={{ padding:'.85rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', gap:8, alignItems:'center' }}>
                   <input style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRadius:4, padding:'.5rem .85rem', fontSize:'.82rem', color:'var(--ink)', outline:'none', width:280, fontFamily:"'DM Sans',sans-serif" }}
@@ -1001,6 +1138,85 @@ export default function DashboardPage() {
                 <button onClick={handleDelete} style={{ flex:1, padding:'.8rem', background:'var(--rust)', color:'white', border:'none', borderRadius:4, fontSize:'.875rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>Yes, Remove</button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: SEND ALL (bulk campaign) */}
+      {showCampaign && (
+        <div style={OVERLAY} onClick={() => { setShowCampaign(false); resetCampaign(); }}>
+          <div style={MBOX} onClick={e=>e.stopPropagation()}>
+            <div style={MHEAD}>
+              <div>
+                <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.2rem', fontWeight:700, color:'var(--ink)' }}>Message Your Whole Customer Base</h3>
+                <div style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:2 }}>Festival greetings, promos, and seasonal offers - send now or schedule ahead</div>
+              </div>
+              <button style={CLOSEBTN} onClick={() => { setShowCampaign(false); resetCampaign(); }}>x</button>
+            </div>
+            <form onSubmit={handleSendCampaign} style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
+
+              <div>
+                <label style={LBL}>Campaign Name *</label>
+                <input style={INP} placeholder="e.g. Diwali Greetings 2026" required
+                  value={campaignForm.label} onChange={e=>setCampaignForm(f=>({...f,label:e.target.value}))}/>
+              </div>
+
+              <div>
+                <label style={LBL}>Message *</label>
+                <textarea style={{ ...INP, minHeight:100, resize:'vertical' }} maxLength={1000}
+                  placeholder="e.g. Wishing you and your family a very Happy Diwali from all of us! As a thank you, enjoy 20% off your next visit this month."
+                  value={campaignForm.messageBody} onChange={e=>setCampaignForm(f=>({...f,messageBody:e.target.value}))}/>
+                <div style={{ fontSize:'.68rem', color:'var(--muted)', marginTop:4, textAlign:'right' }}>{campaignForm.messageBody.length}/1000</div>
+              </div>
+
+              <div>
+                <label style={{ ...LBL, marginBottom:'.6rem' }}>Send Via *</label>
+                <div style={{ display:'flex', gap:'.6rem' }}>
+                  {[{id:'whatsapp',label:'WhatsApp'},{id:'sms',label:'SMS'},{id:'email',label:'Email'}].map(ch => (
+                    <div key={ch.id} onClick={() => toggleCampaignChannel(ch.id)} style={{ flex:1, padding:'.75rem', borderRadius:6, cursor:'pointer', textAlign:'center', border:`1.5px solid ${campaignForm.channels.includes(ch.id)?'var(--gold)':'var(--border)'}`, background:campaignForm.channels.includes(ch.id)?'rgba(200,168,75,.08)':'var(--warm)', transition:'all .2s', userSelect:'none' }}>
+                      <div style={{ fontSize:'.8rem', fontWeight:600, color:campaignForm.channels.includes(ch.id)?'var(--gold)':'var(--ink)' }}>{ch.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:'.5rem' }}>
+                  Only reaches customers whose preferred channel is selected here and who have opted in - about{' '}
+                  <strong style={{ color:'var(--gold)' }}>
+                    {customers.filter(c => c.status!=='opted_out' && campaignForm.channels.includes(c.preferred_channel) &&
+                      ((c.preferred_channel==='whatsapp'&&c.opted_in_whatsapp)||(c.preferred_channel==='sms'&&c.opted_in_sms)||(c.preferred_channel==='email'&&c.opted_in_email))).length}
+                  </strong> of {customers.length} customers.
+                </div>
+              </div>
+
+              <div>
+                <label style={{ ...LBL, marginBottom:'.6rem' }}>When *</label>
+                <div style={{ display:'flex', gap:'.6rem', marginBottom:'.75rem' }}>
+                  {[{id:'now',label:'Send Now'},{id:'later',label:'Schedule for Later'}].map(w => (
+                    <div key={w.id} onClick={() => setCampaignForm(f=>({...f,when:w.id}))} style={{ flex:1, padding:'.75rem', borderRadius:6, cursor:'pointer', textAlign:'center', border:`1.5px solid ${campaignForm.when===w.id?'var(--gold)':'var(--border)'}`, background:campaignForm.when===w.id?'rgba(200,168,75,.08)':'var(--warm)', transition:'all .2s', userSelect:'none' }}>
+                      <div style={{ fontSize:'.8rem', fontWeight:600, color:campaignForm.when===w.id?'var(--gold)':'var(--ink)' }}>{w.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {campaignForm.when === 'later' && (
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
+                    <div>
+                      <label style={LBL}>Date</label>
+                      <input style={INP} type="date" min={todayStr} value={campaignForm.scheduledDate} onChange={e=>setCampaignForm(f=>({...f,scheduledDate:e.target.value}))}/>
+                    </div>
+                    <div>
+                      <label style={LBL}>Time</label>
+                      <input style={INP} type="time" value={campaignForm.scheduledTime} onChange={e=>setCampaignForm(f=>({...f,scheduledTime:e.target.value}))}/>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display:'flex', gap:8, marginTop:'.5rem' }}>
+                <button type="button" className="sf-btn-ghost" style={{ flex:1, padding:'.8rem' }} onClick={() => { setShowCampaign(false); resetCampaign(); }}>Cancel</button>
+                <button type="submit" className="sf-btn-primary" style={{ flex:1, padding:'.8rem', opacity:campaignSaving?.7:1 }} disabled={campaignSaving}>
+                  {campaignSaving ? 'Saving...' : campaignForm.when==='now' ? 'Send Now' : 'Schedule Campaign'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

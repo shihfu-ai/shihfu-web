@@ -1,15 +1,22 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getStaff, isLoggedIn, api } from '../../../lib/api';
 
 export default function SettingsPage() {
-  const router     = useRouter();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
   const fileRef    = useRef(null);
   const [staff, setStaff]           = useState(null);
   const [toast, setToast]           = useState(null);
   const [activeTab, setActiveTab]   = useState('profile');
+
+  // Email connection (Connect Gmail)
+  const [emailConnection, setEmailConnection] = useState(null);
+  const [emailConnLoading, setEmailConnLoading] = useState(true);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
 
   // Profile
   const [profile, setProfile] = useState({ firstName:'', lastName:'', profilePicture:null, previewUrl:null });
@@ -36,7 +43,58 @@ export default function SettingsPage() {
       setProfile(p => ({ ...p, firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '' }));
       setEmails([s.email || '']);
     }
+    loadEmailConnection();
   }, []);
+
+  // After Google redirects back from the consent screen
+  useEffect(() => {
+    if (searchParams.get('email_connected')) {
+      setActiveTab('email');
+      showToast('Google account connected - emails will now send from your own mailbox');
+      loadEmailConnection();
+      router.replace('/dashboard/settings');
+    } else if (searchParams.get('email_error')) {
+      setActiveTab('email');
+      showToast(searchParams.get('email_error'), 'error');
+      router.replace('/dashboard/settings');
+    }
+  }, [searchParams]);
+
+  async function loadEmailConnection() {
+    setEmailConnLoading(true);
+    try {
+      const res = await api.getEmailConnectionStatus();
+      setEmailConnection(res.data);
+    } catch {
+      setEmailConnection({ connected: false });
+    } finally {
+      setEmailConnLoading(false);
+    }
+  }
+
+  async function handleConnectGoogle() {
+    setConnectingGoogle(true);
+    try {
+      const res = await api.getGoogleConnectUrl();
+      window.location.href = res.data.url;
+    } catch (err) {
+      showToast(err.message || 'Could not start Google connection','error');
+      setConnectingGoogle(false);
+    }
+  }
+
+  async function handleDisconnectGoogle() {
+    setDisconnectingGoogle(true);
+    try {
+      await api.disconnectGoogleEmail();
+      setEmailConnection({ connected: false });
+      showToast('Google account disconnected');
+    } catch (err) {
+      showToast(err.message || 'Failed to disconnect','error');
+    } finally {
+      setDisconnectingGoogle(false);
+    }
+  }
 
   function showToast(msg, type='success') {
     setToast({ msg, type });
@@ -124,6 +182,7 @@ export default function SettingsPage() {
   const tabs = [
     { id:'profile',  label:'Profile' },
     { id:'contact',  label:'Contact' },
+    { id:'email',    label:'Email' },
     { id:'password', label:'Password' },
   ];
 
@@ -312,6 +371,45 @@ export default function SettingsPage() {
 
             <button type="submit" className="sf-btn-primary" style={{ padding:'0.85rem 2.5rem' }}>Save Contact Details</button>
           </form>
+        )}
+
+        {/* ── EMAIL TAB ── */}
+        {activeTab==='email' && (
+          <div>
+            <div style={card}>
+              <div style={sectionTitle}>Send Email From Your Own Mailbox</div>
+              <div style={sectionSub}>
+                Connect your Google account so reminder and promo emails send from your own Gmail address, in your business's name.
+                Shih-Fu only ever gets permission to send - never to read your inbox or existing emails. Nothing about your mailbox
+                is visible to us beyond the fact that a message was sent.
+              </div>
+
+              {emailConnLoading ? (
+                <div style={{ fontSize:'0.85rem', color:'var(--muted)' }}>Checking connection...</div>
+              ) : emailConnection?.connected ? (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'1rem', padding:'1rem 1.25rem', background:'rgba(74,124,89,0.06)', border:'1px solid rgba(74,124,89,0.2)', borderRadius:6 }}>
+                  <div>
+                    <div style={{ fontSize:'0.75rem', fontWeight:600, color:'#4a7c59', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.3rem' }}>Connected</div>
+                    <div style={{ fontSize:'0.9rem', fontWeight:600, color:'var(--ink)' }}>{emailConnection.email}</div>
+                  </div>
+                  <button type="button" onClick={handleDisconnectGoogle} disabled={disconnectingGoogle}
+                    style={{ padding:'0.6rem 1.25rem', fontSize:'0.82rem', background:'transparent', border:'1px solid rgba(196,83,42,0.3)', color:'var(--rust)', borderRadius:4, cursor:'pointer', fontFamily:'inherit', fontWeight:500, opacity:disconnectingGoogle?0.6:1 }}>
+                    {disconnectingGoogle ? 'Disconnecting...' : 'Disconnect'}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'1rem', padding:'1rem 1.25rem', background:'var(--warm)', border:'1px solid var(--border)', borderRadius:6 }}>
+                  <div>
+                    <div style={{ fontSize:'0.75rem', fontWeight:600, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.3rem' }}>Not Connected</div>
+                    <div style={{ fontSize:'0.85rem', color:'var(--muted)' }}>Emails currently send from a shared Shih-Fu address, shown under your business name.</div>
+                  </div>
+                  <button type="button" onClick={handleConnectGoogle} disabled={connectingGoogle} className="sf-btn-primary" style={{ padding:'0.7rem 1.5rem', fontSize:'0.85rem', opacity:connectingGoogle?0.7:1, whiteSpace:'nowrap' }}>
+                    {connectingGoogle ? 'Redirecting...' : 'Connect Gmail'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* ── PASSWORD TAB ── */}

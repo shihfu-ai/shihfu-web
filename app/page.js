@@ -327,8 +327,8 @@ export default function LandingPage() {
           Shih<span style={{ color:'#c8a84b' }}>-Fu</span>
         </div>
         <div style={{ display:'flex', gap:'2rem', flexWrap:'wrap' }}>
-          {['Privacy Policy','Terms of Service','Contact','Help'].map(l => (
-            <a key={l} href="#" style={{ fontSize:'.8rem', color:'rgba(245,240,232,.4)', textDecoration:'none', letterSpacing:'.05em' }}>{l}</a>
+          {[{l:'Privacy Policy',href:'/privacy'},{l:'Terms of Service',href:'/terms'},{l:'Contact',href:'mailto:shihfu.ai@gmail.com'},{l:'Help',href:'/dashboard/help'}].map(item => (
+            <Link key={item.l} href={item.href} style={{ fontSize:'.8rem', color:'rgba(245,240,232,.4)', textDecoration:'none', letterSpacing:'.05em' }}>{item.l}</Link>
           ))}
         </div>
         <div style={{ fontSize:'.75rem', color:'rgba(245,240,232,.25)' }}>

@@ -36,6 +36,7 @@ export default function SignupPage() {
   const router  = useRouter();
   const [step, setStep]       = useState(0);
   const [error, setError]     = useState('');
+  const [emailExists, setEmailExists] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -90,6 +91,7 @@ export default function SignupPage() {
 
   async function submit() {
     setError('');
+    setEmailExists(false);
     setLoading(true);
     try {
       const res = await api.register({
@@ -105,7 +107,9 @@ export default function SignupPage() {
       saveAuth(res.data.accessToken, res.data.staff);
       router.push('/dashboard');
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.');
+      const msg = err.message || 'Registration failed. Please try again.';
+      setError(msg);
+      if (/already exists/i.test(msg)) setEmailExists(true);
     } finally { setLoading(false); }
   }
 
@@ -177,6 +181,13 @@ export default function SignupPage() {
             {error && (
               <div style={{ background:'rgba(196,83,42,.08)', border:'1px solid rgba(196,83,42,.2)', borderRadius:4, padding:'.75rem 1rem', marginBottom:'1.25rem', fontSize:'.82rem', color:'var(--rust)' }}>
                 {error}
+                {emailExists && (
+                  <div style={{ marginTop:'.5rem' }}>
+                    <Link href={`/forgot-password?email=${encodeURIComponent(form.email)}`} style={{ color:'var(--rust)', fontWeight:700, textDecoration:'underline' }}>
+                      Reset your password instead
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
 

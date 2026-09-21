@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api, getStaff, clearAuth, isLoggedIn } from '../../lib/api';
 import { getConfig, getServiceTypes, getVerticalLabel } from '../../lib/industry-config';
+import DynamicField, { applyFieldChange } from '../components/DynamicField';
 
 // ─── Blank state factories ─────────────────────────────────────────
 // Built dynamically from the config so they always match the field list.
@@ -42,52 +43,6 @@ const MBOX     = { background:'white', border:'1px solid var(--border)', borderR
 const MHEAD    = { padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, background:'white', zIndex:1 };
 const CLOSEBTN = { background:'var(--warm)', border:'1px solid var(--border)', borderRadius:4, color:'var(--muted)', width:28, height:28, cursor:'pointer', fontSize:'.9rem', display:'flex', alignItems:'center', justifyContent:'center' };
 
-// ─── DynamicField - renders one field from a config entry ─────────
-// MUST be defined at module level to prevent the cursor/typing bug.
-//
-// A field can depend on one or more sibling fields (e.g. Breed depends
-// on Pet Type; Model depends on Make which depends on Vehicle Type).
-// `dependsOn` names the parent key(s); `optionsMap` is keyed by the
-// parent value ("Dog", "Cat", ...) or, for multi-parent fields, by
-// each parent value joined with "::" in dependsOn order ("Car::Maruti
-// Suzuki"). `allValues` is the full asset object so a field can look
-// up its parent(s)' current value.
-function DynamicField({ field, value, onChange, allValues }) {
-  if (field.type === 'select' && field.dependsOn) {
-    const depKeys = Array.isArray(field.dependsOn) ? field.dependsOn : [field.dependsOn];
-    const depValues = depKeys.map(k => allValues?.[k]);
-    const ready = depValues.every(Boolean);
-    const options = ready ? (field.optionsMap?.[depValues.join('::')] || []) : [];
-
-    return (
-      <select style={{ ...INP, cursor: ready ? 'pointer' : 'not-allowed' }} value={value||''} disabled={!ready}
-        onChange={e => onChange(field.key, e.target.value)}>
-        <option value="">{ready ? 'Select...' : `Select ${field.dependsOnLabel || 'the field above'} first`}</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    );
-  }
-
-  if (field.type === 'select') {
-    return (
-      <select style={{ ...INP, cursor:'pointer' }} value={value||''} onChange={e => onChange(field.key, e.target.value)}>
-        <option value="">Select...</option>
-        {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    );
-  }
-
-  return (
-    <input
-      style={INP}
-      type={field.type === 'date' ? 'date' : 'text'}
-      placeholder={field.placeholder || ''}
-      value={value||''}
-      onChange={e => onChange(field.key, e.target.value)}
-    />
-  );
-}
-
 // ─── CustomerFormFields - MUST be outside DashboardPage ───────────
 // Defining inside causes React to unmount/remount on every keystroke.
 function CustomerFormFields({
@@ -106,24 +61,7 @@ function CustomerFormFields({
   // which in turn clears Model — so a stale, no-longer-valid selection
   // never lingers.
   function updateAsset(key, val) {
-    setAsset(a => {
-      const next = { ...a, [key]: val };
-      const cleared = new Set([key]);
-      let progress = true;
-      while (progress) {
-        progress = false;
-        for (const f of config.assetFields) {
-          if (cleared.has(f.key) || !next[f.key]) continue;
-          const deps = Array.isArray(f.dependsOn) ? f.dependsOn : (f.dependsOn ? [f.dependsOn] : []);
-          if (deps.some(d => cleared.has(d))) {
-            next[f.key] = '';
-            cleared.add(f.key);
-            progress = true;
-          }
-        }
-      }
-      return next;
-    });
+    setAsset(a => applyFieldChange(config.assetFields, a, key, val));
   }
   function updateRetention(key, val) { setRetention(r => ({ ...r, [key]: val })); }
 
@@ -264,6 +202,12 @@ export default function DashboardPage() {
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
   const [profileLoading, setProfileLoading]           = useState(false);
   const [viewingCustomer, setViewingCustomer]         = useState(null);
+
+  // Quick check-in form (shareable link + counter mode)
+  const [showCheckin, setShowCheckin]   = useState(false);
+  const [checkinToken, setCheckinToken] = useState(null);
+  const [checkinPhone, setCheckinPhone] = useState('');
+  const [checkinBusy, setCheckinBusy]   = useState(false);
 
   // Send All (bulk campaign)
   const [showCampaign, setShowCampaign]     = useState(false);
@@ -472,6 +416,33 @@ export default function DashboardPage() {
     } catch (err) { showToast(err.message || 'Failed','error'); }
   }
 
+  // ── Quick check-in form ────────────────────────────────────────
+  async function openCheckin() {
+    setShowCheckin(true);
+    if (checkinToken) return;
+    setCheckinBusy(true);
+    try { const res = await api.getCheckinLink(); setCheckinToken(res.data.token); }
+    catch (err) { showToast(err.message || 'Could not load your check-in link','error'); setShowCheckin(false); }
+    finally { setCheckinBusy(false); }
+  }
+
+  const checkinLink = checkinToken ? `${window.location.origin}/checkin/${checkinToken}` : '';
+  const checkinMessage = `Hi! Please fill in this quick form before your visit to ${staff?.businessName || 'us'}: ${checkinLink}`;
+  const checkinPhoneOk = /^[6-9]\d{9}$/.test(checkinPhone);
+
+  async function copyCheckinLink() {
+    try { await navigator.clipboard.writeText(checkinLink); showToast('Link copied'); }
+    catch { showToast('Could not copy. Select the link and copy it manually.','error'); }
+  }
+
+  async function regenerateCheckin() {
+    if (!window.confirm('Create a new link? The current link (and any printed QR code or saved bookmark of it) will stop working.')) return;
+    setCheckinBusy(true);
+    try { const res = await api.regenerateCheckinLink(); setCheckinToken(res.data.token); showToast('New link created'); }
+    catch (err) { showToast(err.message || 'Failed','error'); }
+    finally { setCheckinBusy(false); }
+  }
+
   // ── Send All (bulk campaign) ──────────────────────────────────
   function resetCampaign() {
     setCampaignForm({ label:'', messageBody:'', channels:['whatsapp'], when:'now', scheduledDate:todayStr, scheduledTime:'10:00' });
@@ -646,6 +617,7 @@ export default function DashboardPage() {
             <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'1rem', fontStyle:'italic', color:'var(--ink)' }}>{staff ? `Good day, ${staff.name?.split(' ')[0]}` : 'Dashboard'}</div>
           </div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            <button className="sf-btn-ghost" style={{ padding:'.5rem 1rem', fontSize:'.8rem' }} onClick={openCheckin}>Check-in Form</button>
             <button className="sf-btn-ghost" style={{ padding:'.5rem 1rem', fontSize:'.8rem' }} onClick={() => setShowAdd(true)}>+ Add Customer</button>
             <button className="sf-btn-primary" style={{ padding:'.5rem 1rem', fontSize:'.8rem' }} onClick={() => setShowLog(true)}>+ Log Service</button>
 
@@ -738,6 +710,7 @@ export default function DashboardPage() {
                       <tr key={c.id} style={{ borderBottom:'1px solid var(--border)' }}>
                         <td style={{ padding:'.85rem 1rem', fontSize:'.875rem', fontWeight:600 }}>
                           <span onClick={() => openProfile(c)} style={{ color:'var(--gold)', cursor:'pointer', textDecoration:'underline', textDecorationColor:'rgba(200,168,75,.35)', textUnderlineOffset:3 }}>{c.name}</span>
+                            {c.tags?.includes('checkin') && <span title="Added through the quick check-in form. Open Edit to add the remaining details." style={{ marginLeft:8, fontSize:'.6rem', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'#4a7c59', background:'rgba(74,124,89,.1)', border:'1px solid rgba(74,124,89,.25)', borderRadius:10, padding:'1px 7px' }}>Check-in</span>}
                         </td>
                         <td style={{ padding:'.85rem 1rem', fontSize:'.8rem', color:'var(--muted)' }}>+91 {c.phone}</td>
                         <td style={{ padding:'.85rem 1rem' }}><span className={pill(c.status)}>{c.status}</span></td>
@@ -816,6 +789,7 @@ export default function DashboardPage() {
                         <tr key={c.id} style={{ borderBottom:'1px solid var(--border)' }}>
                           <td style={{ padding:'.85rem 1rem', fontSize:'.875rem', fontWeight:600, whiteSpace:'nowrap' }}>
                             <span onClick={() => openProfile(c)} style={{ color:'var(--gold)', cursor:'pointer', textDecoration:'underline', textDecorationColor:'rgba(200,168,75,.35)', textUnderlineOffset:3 }}>{c.name}</span>
+                            {c.tags?.includes('checkin') && <span title="Added through the quick check-in form. Open Edit to add the remaining details." style={{ marginLeft:8, fontSize:'.6rem', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'#4a7c59', background:'rgba(74,124,89,.1)', border:'1px solid rgba(74,124,89,.25)', borderRadius:10, padding:'1px 7px' }}>Check-in</span>}
                           </td>
                           <td style={{ padding:'.85rem 1rem', fontSize:'.78rem', color:'var(--muted)' }}>+91 {c.phone}</td>
                           <td style={{ padding:'.85rem 1rem', fontSize:'.8rem', color:'var(--muted)' }}>{c.entity_name ? `${c.entity_name}${c.breed_or_model?' · '+c.breed_or_model:''}` : 'Not added'}</td>
@@ -1137,6 +1111,65 @@ export default function DashboardPage() {
                 <button className="sf-btn-ghost" style={{ flex:1, padding:'.8rem' }} onClick={() => setShowDelete(false)}>Cancel</button>
                 <button onClick={handleDelete} style={{ flex:1, padding:'.8rem', background:'var(--rust)', color:'white', border:'none', borderRadius:4, fontSize:'.875rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>Yes, Remove</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CHECK-IN FORM LINK */}
+      {showCheckin && (
+        <div style={OVERLAY} onClick={() => setShowCheckin(false)}>
+          <div style={MBOX} onClick={e=>e.stopPropagation()}>
+            <div style={MHEAD}>
+              <div>
+                <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.2rem', fontWeight:700, color:'var(--ink)' }}>Quick Check-in Form</h3>
+                <div style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:2 }}>Let new customers enter their own details</div>
+              </div>
+              <button style={CLOSEBTN} onClick={() => setShowCheckin(false)}>x</button>
+            </div>
+            <div style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+              {!checkinToken ? (
+                <div style={{ color:'var(--muted)', fontSize:'.875rem' }}>Loading your link...</div>
+              ) : (
+                <>
+                  <div style={{ fontSize:'.82rem', color:'var(--muted)', lineHeight:1.7 }}>
+                    A short form tailored to {getVerticalLabel(vertical) || 'your business'}. Customers enter their name, number and a few details about their {config.assetName?.toLowerCase()}, and agree to be messaged. They show up in your Customers list marked <strong>Check-in</strong>; open Edit any time to add more.
+                  </div>
+
+                  <div>
+                    <label style={LBL}>Your check-in link</label>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <input readOnly value={checkinLink} onFocus={e=>e.target.select()} style={{ ...INP, fontSize:'.8rem' }}/>
+                      <button className="sf-btn-primary" style={{ padding:'0 1.25rem', whiteSpace:'nowrap' }} onClick={copyCheckinLink}>Copy</button>
+                    </div>
+                  </div>
+
+                  <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRadius:8, padding:'1rem 1.15rem' }}>
+                    <div style={{ fontSize:'.85rem', fontWeight:600, color:'var(--ink)', marginBottom:'.25rem' }}>At the counter (iPad or display)</div>
+                    <div style={{ fontSize:'.78rem', color:'var(--muted)', marginBottom:'.75rem', lineHeight:1.6 }}>Opens the form on its own and resets itself after each person, so the next customer starts fresh.</div>
+                    <a href={`${checkinLink}?kiosk=1`} target="_blank" rel="noreferrer" className="sf-btn-ghost" style={{ display:'inline-block', padding:'.55rem 1.1rem', fontSize:'.8rem', textDecoration:'none' }}>Open counter mode</a>
+                  </div>
+
+                  <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRadius:8, padding:'1rem 1.15rem' }}>
+                    <div style={{ fontSize:'.85rem', fontWeight:600, color:'var(--ink)', marginBottom:'.25rem' }}>Send to someone who called</div>
+                    <div style={{ fontSize:'.78rem', color:'var(--muted)', marginBottom:'.75rem', lineHeight:1.6 }}>Opens WhatsApp or your messages app with the link ready to send from your own number.</div>
+                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                      <div style={{ display:'flex', flex:'1 1 200px' }}>
+                        <div style={{ background:'white', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'.75rem .8rem', fontSize:'.82rem', fontWeight:600, color:'var(--gold)', display:'flex', alignItems:'center' }}>+91</div>
+                        <input style={{ ...INP, borderRadius:'0 4px 4px 0' }} inputMode="numeric" maxLength={10} placeholder="Mobile number" value={checkinPhone} onChange={e=>setCheckinPhone(e.target.value.replace(/\D/g,'').slice(0,10))}/>
+                      </div>
+                      <a href={`https://wa.me/91${checkinPhone}?text=${encodeURIComponent(checkinMessage)}`} target="_blank" rel="noreferrer" className="sf-btn-primary" style={{ padding:'.75rem 1.1rem', fontSize:'.8rem', textDecoration:'none', opacity:checkinPhoneOk?1:.45, pointerEvents:checkinPhoneOk?'auto':'none' }}>WhatsApp</a>
+                      <a href={`sms:+91${checkinPhone}?body=${encodeURIComponent(checkinMessage)}`} className="sf-btn-ghost" style={{ padding:'.75rem 1.1rem', fontSize:'.8rem', textDecoration:'none', opacity:checkinPhoneOk?1:.45, pointerEvents:checkinPhoneOk?'auto':'none' }}>SMS</a>
+                    </div>
+                  </div>
+
+                  {(staff?.role === 'owner' || staff?.role === 'manager') && (
+                    <button type="button" onClick={regenerateCheckin} disabled={checkinBusy} style={{ alignSelf:'flex-start', background:'none', border:'none', padding:0, cursor:'pointer', fontSize:'.75rem', color:'var(--muted)', textDecoration:'underline', fontFamily:'inherit' }}>
+                      Link shared by mistake? Create a new one
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>

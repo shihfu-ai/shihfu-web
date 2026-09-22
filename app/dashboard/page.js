@@ -211,6 +211,7 @@ export default function DashboardPage() {
 
   // Send All (bulk campaign)
   const [showCampaign, setShowCampaign]     = useState(false);
+  const [channelStatus, setChannelStatus]   = useState(null);
   const [campaignSaving, setCampaignSaving] = useState(false);
   const todayStr = new Date().toISOString().split('T')[0];
   const [campaignForm, setCampaignForm] = useState({
@@ -248,20 +249,33 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
+  // The list endpoints return at most 100 rows per page; a business can have
+  // hundreds of customers, so walk the pages (capped) rather than silently
+  // showing only the first few.
+  async function fetchAllPages(fetchPage, maxPages = 10) {
+    let rows = [];
+    for (let page = 1; page <= maxPages; page++) {
+      const res = await fetchPage({ limit: 100, page });
+      rows = rows.concat(res.data || []);
+      if (page >= (res.pagination?.totalPages || 1)) break;
+    }
+    return rows;
+  }
+
   async function loadData() {
     setLoading(true);
     try {
       const [dash, custs, rems, remSum, evs, camps] = await Promise.all([
         api.getDashboard().catch(()=>({})),
-        api.getCustomers({ limit:50 }).catch(()=>({ data:[] })),
-        api.getReminders({ limit:50 }).catch(()=>({ data:[] })),
+        fetchAllPages(api.getCustomers).catch(()=>[]),
+        fetchAllPages(api.getReminders).catch(()=>[]),
         api.getReminderSummary().catch(()=>({ data:{} })),
         api.getServiceEvents({ limit:20 }).catch(()=>({ data:[] })),
         api.getCampaigns().catch(()=>({ data:[] })),
       ]);
       setDashboard(dash.data || {});
-      setCustomers(custs.data || []);
-      setReminders(rems.data || []);
+      setCustomers(custs);
+      setReminders(rems);
       setReminderSummary(remSum.data || {});
       setEvents(evs.data || []);
       setCampaigns(camps.data || []);
@@ -444,6 +458,19 @@ export default function DashboardPage() {
   }
 
   // ── Send All (bulk campaign) ──────────────────────────────────
+  async function openCampaign() {
+    setShowCampaign(true);
+    try {
+      const res = await api.getChannelStatus();
+      setChannelStatus(res.data);
+      // start on a channel that can actually send
+      setCampaignForm(f => {
+        const usable = ['whatsapp','sms','email'].filter(ch => res.data[ch]?.available);
+        return f.channels.every(ch => res.data[ch]?.available) ? f : { ...f, channels: usable.slice(0, 1) };
+      });
+    } catch { /* the server re-checks on submit anyway */ }
+  }
+
   function resetCampaign() {
     setCampaignForm({ label:'', messageBody:'', channels:['whatsapp'], when:'now', scheduledDate:todayStr, scheduledTime:'10:00' });
   }
@@ -734,7 +761,7 @@ export default function DashboardPage() {
                   <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.5rem', fontWeight:700, color:'var(--ink)' }}>All Customers</h2>
                 </div>
                 <div style={{ display:'flex', gap:8 }}>
-                  <button className="sf-btn-ghost" onClick={() => setShowCampaign(true)}>Send All</button>
+                  <button className="sf-btn-ghost" onClick={openCampaign}>Send All</button>
                   <button className="sf-btn-primary" onClick={() => setShowAdd(true)}>+ Add Customer</button>
                 </div>
               </div>
@@ -1206,11 +1233,15 @@ export default function DashboardPage() {
                 <label style={{ ...LBL, marginBottom:'.6rem' }}>Send Via *</label>
                 <div style={{ display:'flex', gap:'.6rem' }}>
                   {[{id:'whatsapp',label:'WhatsApp'},{id:'sms',label:'SMS'},{id:'email',label:'Email'}].map(ch => (
-                    <div key={ch.id} onClick={() => toggleCampaignChannel(ch.id)} style={{ flex:1, padding:'.75rem', borderRadius:6, cursor:'pointer', textAlign:'center', border:`1.5px solid ${campaignForm.channels.includes(ch.id)?'var(--gold)':'var(--border)'}`, background:campaignForm.channels.includes(ch.id)?'rgba(200,168,75,.08)':'var(--warm)', transition:'all .2s', userSelect:'none' }}>
+                    <div key={ch.id} title={channelStatus?.[ch.id]?.available === false ? channelStatus[ch.id].reason : ''} onClick={() => channelStatus?.[ch.id]?.available !== false && toggleCampaignChannel(ch.id)} style={{ flex:1, padding:'.75rem', borderRadius:6, cursor:channelStatus?.[ch.id]?.available === false ? 'not-allowed' : 'pointer', opacity:channelStatus?.[ch.id]?.available === false ? .45 : 1, textAlign:'center', border:`1.5px solid ${campaignForm.channels.includes(ch.id)?'var(--gold)':'var(--border)'}`, background:campaignForm.channels.includes(ch.id)?'rgba(200,168,75,.08)':'var(--warm)', transition:'all .2s', userSelect:'none' }}>
                       <div style={{ fontSize:'.8rem', fontWeight:600, color:campaignForm.channels.includes(ch.id)?'var(--gold)':'var(--ink)' }}>{ch.label}</div>
+                      {channelStatus?.[ch.id]?.available === false && <div style={{ fontSize:'.62rem', color:'var(--muted)', marginTop:2 }}>Not set up</div>}
                     </div>
                   ))}
                 </div>
+                {channelStatus && ['whatsapp','sms','email'].filter(ch => channelStatus[ch]?.available === false).map(ch => (
+                  <div key={ch} style={{ fontSize:'.72rem', color:'var(--rust)', marginTop:'.4rem' }}>{channelStatus[ch].reason}.</div>
+                ))}
                 <div style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:'.5rem' }}>
                   Only reaches customers whose preferred channel is selected here and who have opted in - about{' '}
                   <strong style={{ color:'var(--gold)' }}>

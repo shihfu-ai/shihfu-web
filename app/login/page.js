@@ -48,7 +48,7 @@ export default function LoginPage() {
           Shih<span style={{ color:'var(--gold)' }}>-Fu</span>
         </Link>
         <div style={{ fontSize:'.82rem', color:'var(--muted)' }}>
-          India's retention-first CRM for service businesses
+          India&apos;s retention-first CRM for service businesses
         </div>
       </nav>
 
@@ -98,13 +98,6 @@ export default function LoginPage() {
                 </Link>
               </div>
             </form>
-          </div>
-
-          {/* Demo credentials */}
-          <div style={{ marginTop:'1.25rem', padding:'1rem 1.25rem', background:'rgba(200,168,75,.08)', border:'1px solid rgba(200,168,75,.2)', borderRadius:6, fontSize:'.78rem', color:'var(--muted)', lineHeight:1.7 }}>
-            <div style={{ fontWeight:600, color:'var(--gold)', marginBottom:'.3rem', letterSpacing:'.05em', textTransform:'uppercase', fontSize:'.68rem' }}>Demo credentials</div>
-            <div>Email: priya@pawcare.in</div>
-            <div>Password: ShihFu@2024</div>
           </div>
         </div>
       </div>

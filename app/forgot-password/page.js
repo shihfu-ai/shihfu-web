@@ -140,7 +140,7 @@ function ForgotPasswordInner() {
                   {loading ? 'Updating...' : 'Update Password'}
                 </button>
                 <button type="button" onClick={() => { setStep('email'); setError(''); setInfo(''); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:'.8rem', fontFamily:'inherit', textAlign:'center' }}>
-                  Didn't get a code? Try a different email
+                  Didn&apos;t get a code? Try a different email
                 </button>
               </form>
             )}

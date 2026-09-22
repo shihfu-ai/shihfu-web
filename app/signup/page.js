@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { api, saveAuth } from '../../lib/api';
 import { SIGNUP_VERTICALS } from '../../lib/industry-config';
 
-const STEPS = ['Business Profile', 'Industry', 'Channels', 'Review'];
+const STEPS = ['Business Profile', 'Industry', 'Review'];
 
 const LANGUAGES = [
   { value:'en', label:'English' },
@@ -26,11 +26,6 @@ const CITIES = [
   'Lucknow','Bhopal','Visakhapatnam','Coimbatore','Vadodara','Other',
 ];
 
-const CHANNELS = [
-  { id:'whatsapp', label:'WhatsApp', sub:'Highest open rate. 500M+ Indian users.' },
-  { id:'sms',      label:'SMS',      sub:'Instant delivery. No app needed.' },
-  { id:'email',    label:'Email',    sub:'Detailed reminders and offers.' },
-];
 
 export default function SignupPage() {
   const router  = useRouter();
@@ -42,19 +37,10 @@ export default function SignupPage() {
   const [form, setForm] = useState({
     businessName:'', ownerName:'', phone:'', email:'',
     password:'', city:'', vertical:'', healthcareSubType:'',
-    preferredLang:'en', channels:['whatsapp'],
+    preferredLang:'en',
   });
 
   const update = (field, value) => setForm(f => ({ ...f, [field]: value }));
-
-  function toggleChannel(ch) {
-    setForm(f => ({
-      ...f,
-      channels: f.channels.includes(ch)
-        ? f.channels.filter(c => c !== ch)
-        : [...f.channels, ch],
-    }));
-  }
 
   // The actual vertical key sent to the API
   function resolvedVertical() {
@@ -80,9 +66,6 @@ export default function SignupPage() {
       if (form.vertical === 'healthcare' && !form.healthcareSubType) {
         setError('Please select your clinic type (Eye or Dental)'); return false;
       }
-    }
-    if (step === 2 && form.channels.length === 0) {
-      setError('Please select at least one messaging channel'); return false;
     }
     return true;
   }
@@ -279,31 +262,8 @@ export default function SignupPage() {
               </div>
             )}
 
-            {/* ── STEP 2: Channels ── */}
+            {/* ── STEP 2: Review ── */}
             {step === 2 && (
-              <div>
-                <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.25rem', fontWeight:700, marginBottom:'.4rem' }}>Messaging Channels</h2>
-                <p style={{ fontSize:'.85rem', color:'var(--muted)', fontWeight:300, marginBottom:'1.25rem' }}>
-                  Select how you want to reach customers. You can adjust this later.
-                </p>
-                <div style={{ display:'flex', flexDirection:'column', gap:'.75rem' }}>
-                  {CHANNELS.map(ch => (
-                    <div key={ch.id} onClick={() => toggleChannel(ch.id)} style={{ padding:'1.1rem 1.25rem', borderRadius:6, cursor:'pointer', border:`1.5px solid ${form.channels.includes(ch.id)?'var(--gold)':'var(--border)'}`, background:form.channels.includes(ch.id)?'rgba(200,168,75,.06)':'var(--warm)', transition:'all .2s', display:'flex', alignItems:'center', justifyContent:'space-between', userSelect:'none' }}>
-                      <div>
-                        <div style={{ fontWeight:600, fontSize:'.9rem', color:'var(--ink)' }}>{ch.label}</div>
-                        <div style={{ fontSize:'.78rem', color:'var(--muted)', fontWeight:300, marginTop:'.2rem' }}>{ch.sub}</div>
-                      </div>
-                      <div style={{ width:20, height:20, borderRadius:4, border:`1.5px solid ${form.channels.includes(ch.id)?'var(--gold)':'var(--border)'}`, background:form.channels.includes(ch.id)?'var(--gold)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        {form.channels.includes(ch.id) && <div style={{ width:10, height:10, background:'white', borderRadius:2 }}/>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP 3: Review ── */}
-            {step === 3 && (
               <div>
                 <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.25rem', fontWeight:700, marginBottom:'1.25rem' }}>Review and Launch</h2>
                 {[
@@ -313,7 +273,6 @@ export default function SignupPage() {
                   { label:'Email',         value:form.email },
                   { label:'City',          value:form.city || 'Not specified' },
                   { label:'Industry',      value:selectedVerticalLabel() },
-                  { label:'Channels',      value:form.channels.join(', ') },
                   { label:'Language',      value:LANGUAGES.find(l=>l.value===form.preferredLang)?.label },
                 ].map((r,i) => (
                   <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'.7rem 0', borderBottom:'1px solid var(--border)' }}>

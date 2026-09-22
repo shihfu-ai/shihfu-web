@@ -16,7 +16,7 @@ const SECTIONS = [
   },
   {
     h: '4. Your Data and Your Customers’ Consent',
-    body: 'You own the customer records and content you upload to Shih-Fu. You are solely responsible for ensuring you have the customers’ own consent, and any legal right, to store their information and to message them via the channels you enable — Shih-Fu is a technical conduit for sending your messages, not a party to your relationship with your customers. You must honour opt-out requests from your customers promptly.',
+    body: 'You own the customer records and content you upload to Shih-Fu. You are solely responsible for ensuring you have the customers’ own consent, and any legal right, to store their information and to message them via the channels you enable, Shih-Fu is a technical conduit for sending your messages, not a party to your relationship with your customers. You must honour opt-out requests from your customers promptly.',
   },
   {
     h: '5. Acceptable Use',
@@ -28,7 +28,7 @@ const SECTIONS = [
   },
   {
     h: '7. Third-Party Services',
-    body: 'Message delivery depends on third-party platforms — Meta’s WhatsApp Business Platform, Twilio (SMS), and email providers including Google, if you connect your own account. Your use of those channels through Shih-Fu is also subject to each provider’s own terms, and Shih-Fu is not responsible for outages, policy changes, or message rejections caused by those providers.',
+    body: 'Message delivery depends on third-party platforms, Meta’s WhatsApp Business Platform, Twilio (SMS), and email providers including Google, if you connect your own account. Your use of those channels through Shih-Fu is also subject to each provider’s own terms, and Shih-Fu is not responsible for outages, policy changes, or message rejections caused by those providers.',
   },
   {
     h: '8. Intellectual Property',

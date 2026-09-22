@@ -7,15 +7,19 @@ const FAQS = [
     items: [
       {
         q: 'How do I add my first customer?',
-        a: 'From your dashboard, click the "+ Add Customer" button in the top right corner. Fill in the customer name, mobile number, and messaging channel preference. You can also add pet, vehicle, or client details depending on your business type.',
+        a: 'Click "+ Add Customer" at the top of your dashboard. Fill in the customer name, mobile number, and how they would like to be messaged. You can also add pet, vehicle, or property details depending on your business type. Or let customers do it themselves with the Check-in Form (see below).',
+      },
+      {
+        q: 'What is the Check-in Form?',
+        a: 'A short form your new customers fill in themselves. Click "Check-in Form" at the top of your dashboard to get your link. Open counter mode on an iPad or display so each walk-in can check themselves in, or send the link by WhatsApp or SMS to someone who calls to book. They appear in your Customers list marked "Check-in", and you can open Edit to add the remaining details.',
       },
       {
         q: 'How do I log a service visit?',
-        a: 'Click "+ Log Service" in the top right corner of your dashboard. Select the customer, choose the service type, enter the date, and set when the next reminder should go out. Shih-Fu will automatically schedule the follow-up message.',
+        a: 'Click "+ Log Service" at the top of your dashboard. Select the customer, choose the service type, enter the date, and choose when the next reminder should go out. Shih-Fu schedules the follow-up for you.',
       },
       {
         q: 'What happens after I log a service?',
-        a: 'Shih-Fu automatically calculates the next reminder date based on the follow-up rule you set (e.g. 7 days, 90 days, 1 year). The reminder appears in your queue and is sent to the customer on the scheduled date via their preferred channel.',
+        a: 'If you chose a follow-up period (for example 30 days or 1 year), the reminder appears in your Reminder Queue and is sent on the due date to the customer on their preferred channel. You can also send it early with "Send Now" or skip it.',
       },
     ],
   },
@@ -24,23 +28,19 @@ const FAQS = [
     items: [
       {
         q: 'Which messaging channels does Shih-Fu support?',
-        a: 'Shih-Fu supports WhatsApp, SMS, and Email. You can enable one or more channels per customer. WhatsApp has the highest open rate and is the recommended primary channel for Indian customers.',
+        a: 'WhatsApp, SMS, and Email. Each customer has a preferred channel, and messages only go to customers who have agreed to receive them on that channel. Email is available as soon as you connect your Gmail. WhatsApp and SMS need a one-time setup on our side; write to us and we will guide you.',
       },
       {
-        q: 'Will customers know the messages are sent by Shih-Fu?',
-        a: 'No. Every message is sent in your business name. Customers see your clinic, salon, or garage name - not Shih-Fu. The platform works invisibly in the background.',
+        q: 'How does email get sent, and will customers see Shih-Fu?',
+        a: 'Go to Account Settings, then Email, and connect your Gmail account. Emails are then sent from your own Gmail address in your business name, and they appear in your Gmail Sent folder. Customer replies arrive in your own inbox. Shih-Fu can only send, and cannot read your inbox. Until you connect Gmail, email cannot be sent.',
       },
       {
-        q: 'How do I set up WhatsApp Business messaging?',
-        a: 'WhatsApp Business API requires a verified Meta Business account. After signing up, contact our support team at shihfu.ai@gmail.com and we will walk you through the setup process. SMS is available immediately on all plans.',
+        q: 'Can I send a message to all my customers at once?',
+        a: 'Yes. On the Customers page click "Send All" to send a festival greeting or offer to everyone who has opted in on the channels you choose. You can send it now or schedule it for a future date and time, and scheduled campaigns can be cancelled from the same page.',
       },
       {
-        q: 'Can I customise the reminder messages?',
-        a: 'Yes. Go to the Templates section in your dashboard to edit message content for each service type. Messages support variables like customer name, pet name, and due date which are filled in automatically at send time.',
-      },
-      {
-        q: 'What happens if a customer opts out?',
-        a: 'If a customer replies STOP to an SMS or unsubscribes from an email, Shih-Fu automatically marks them as opted out and stops all future messages to that channel. You can see their opt-out status in their customer profile.',
+        q: 'What happens if a customer does not want messages?',
+        a: 'Only customers who have agreed to a channel are messaged on it. If a customer asks you to stop, open their Edit form and untick that channel, or use Remove. Removed customers are skipped by all future reminders and campaigns.',
       },
     ],
   },
@@ -48,33 +48,29 @@ const FAQS = [
     section: 'Customer Records',
     items: [
       {
-        q: 'Can I import my existing customer list?',
-        a: 'Yes. From the Customers page, click "Import CSV". Prepare a spreadsheet with columns for name, phone, email, and city. The maximum import batch size is 500 records at a time.',
-      },
-      {
         q: 'What does removing a customer do?',
-        a: 'Removing a customer stops all future reminders and marks them as removed. Their service history and past records are preserved for your reference. This action can be undone by contacting support.',
+        a: 'Removing a customer takes them off your list and cancels their upcoming reminders. Their service history is kept. If you add the same mobile number again later, the customer is restored with their history.',
       },
       {
         q: 'Can one customer have multiple pets or vehicles?',
-        a: 'Currently each customer record supports one primary entity (pet or vehicle). Support for multiple entities per customer is on our roadmap and will be available in an upcoming update.',
+        a: 'Currently each customer record supports one main pet, vehicle, or property. Support for more is planned.',
       },
     ],
   },
   {
-    section: 'Billing and Plans',
+    section: 'Account and Billing',
     items: [
       {
         q: 'What is included in the free trial?',
-        a: 'Your 30-day free trial includes full access to all features on the Growth plan with up to 500 customer records. No credit card is required to start.',
+        a: 'Your 30-day free trial includes all features with up to 500 customer records. No credit card is required.',
       },
       {
-        q: 'What happens if I reach my customer limit?',
-        a: 'You will see a warning when you are approaching your plan limit. You can upgrade your plan at any time from Account Settings. Existing customers and reminders are never affected by plan changes.',
+        q: 'I forgot my password. What do I do?',
+        a: 'On the sign in page click "Forgot password?" and enter your business email. We email a 6-digit code (from your connected Gmail if you have connected one). Enter the code and choose a new password. If you have not connected Gmail and do not receive a code, write to us and we will help you back in.',
       },
       {
-        q: 'Can I change my plan at any time?',
-        a: 'Yes. You can upgrade or downgrade your plan at any time. Upgrades take effect immediately. Downgrades apply at the start of your next billing cycle.',
+        q: 'How do I change my details or password?',
+        a: 'Open Account Settings from the profile menu at the top right of your dashboard.',
       },
     ],
   },
@@ -83,11 +79,15 @@ const FAQS = [
     items: [
       {
         q: 'Where is my data stored?',
-        a: 'All data is stored on secure servers in India (Singapore region). Your customer data never leaves your account and is never shared with third parties.',
+        a: 'Your data is stored on secure cloud servers in Singapore. Your records are kept separate from every other business, and no other business can see them.',
       },
       {
-        q: 'Is my customer data GDPR and DPDP compliant?',
-        a: 'Shih-Fu is designed with India\'s Digital Personal Data Protection (DPDP) Act in mind. Consent records, opt-in timestamps, and opt-out handling are all built into the platform. For enterprise compliance queries, contact us at shihfu.ai@gmail.com.',
+        q: 'Who else handles my customers\' details?',
+        a: 'Only the services needed to deliver your messages: Meta (WhatsApp), your SMS provider, and Google (for email sent from your own Gmail). We do not sell data or use your customers\' details for our own marketing. See our Privacy Policy for the full detail.',
+      },
+      {
+        q: 'Is Shih-Fu compliant with India\'s DPDP Act?',
+        a: 'Shih-Fu is built with the DPDP Act in mind: we record what each customer has agreed to and when, and only message customers on channels they have agreed to. As the business, you remain responsible for having the right to contact your own customers. For specific compliance questions, write to shihfu.ai@gmail.com.',
       },
     ],
   },

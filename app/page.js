@@ -62,7 +62,7 @@ export default function LandingPage() {
             <br/>again.
           </h1>
           <p style={{ fontSize:'1.05rem', lineHeight:1.75, color:'#6b6456', maxWidth:480, marginBottom:'2.5rem', fontWeight:300 }}>
-            Shih-Fu automates follow-ups, service reminders, and re-engagement for any service-based business across India - so no customer ever slips through the cracks.
+            Shih-Fu automates follow-ups, service reminders, and re-engagement for any service-based business across India - so fewer customers slip through the cracks.
           </p>
           <div style={{ display:'flex', gap:'1rem', alignItems:'center', flexWrap:'wrap' }}>
             <Link href="/signup" className="btn-primary">Start Free - No Card Needed</Link>
@@ -79,8 +79,8 @@ export default function LandingPage() {
         <div style={{ position:'relative' }}>
           <div style={{ background:'white', borderRadius:12, padding:'2rem', boxShadow:'0 24px 80px rgba(0,0,0,.12)', border:'1px solid var(--border)' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.5rem' }}>
-              <span style={{ fontSize:'.75rem', fontWeight:500, letterSpacing:'.1em', textTransform:'uppercase', color:'#6b6456' }}>Live Reminder Queue</span>
-              <span style={{ background:'#ecfdf5', color:'#059669', fontSize:'.72rem', fontWeight:600, padding:'.25rem .7rem', borderRadius:20 }}>4 Active</span>
+              <span style={{ fontSize:'.75rem', fontWeight:500, letterSpacing:'.1em', textTransform:'uppercase', color:'#6b6456' }}>Sample Reminder Queue</span>
+              <span style={{ background:'#ecfdf5', color:'#059669', fontSize:'.72rem', fontWeight:600, padding:'.25rem .7rem', borderRadius:20 }}>Example</span>
             </div>
             {[
               { initials:'PS', name:'Priya Sharma', meta:'Wellness Clinic - Annual checkup due', tag:'Due Today', tagBg:'#fef3c7', tagColor:'#92400e' },
@@ -99,7 +99,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div style={{ position:'absolute', bottom:'-1.5rem', left:'-2rem', background:'#0d0d0d', color:'#f5f0e8', padding:'.8rem 1.2rem', borderRadius:10, fontSize:'.8rem', fontWeight:500, boxShadow:'0 12px 40px rgba(0,0,0,.25)', whiteSpace:'nowrap' }}>
-            +3 customers rebooked this week via reminder
+            Sample view. Your own queue appears here.
           </div>
         </div>
       </section>
@@ -107,10 +107,10 @@ export default function LandingPage() {
       {/* STATS */}
       <div style={{ background:'#0d0d0d', color:'#f5f0e8', padding:'1.4rem 4rem', display:'flex', justifyContent:'space-around', alignItems:'center', flexWrap:'wrap', gap:'1.5rem' }}>
         {[
-          { num:'68%', label:'Revenue lost to missed follow-ups' },
-          { num:'3x',  label:'Higher retention with automation' },
-          { num:'5 min', label:'Average setup time per business' },
-          { num:'Zero', label:'Manual follow-up work required' },
+          { num:'10',  label:'Industries supported' },
+          { num:'3',   label:'Channels: WhatsApp, SMS, Email' },
+          { num:'3 min', label:'To set up your business' },
+          { num:'30 days', label:'Free trial, no card needed' },
         ].map((s,i) => (
           <div key={i} style={{ textAlign:'center' }}>
             <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'2rem', fontWeight:700, color:'#c8a84b', lineHeight:1 }}>{s.num}</div>
@@ -143,42 +143,42 @@ export default function LandingPage() {
         {/* Fix #4 - Features section replaces pricing */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.25rem' }}>
           {[
-            {
-              icon:'A',
-              title:'Automated Follow-Ups',
-              desc:'Set it once. Shih-Fu automatically sends reminders on the right day via WhatsApp, SMS, or Email - without you lifting a finger.',
-              highlights:['Time-based triggers','Condition-based rules','Multi-step sequences'],
-            },
-            {
-              icon:'B',
-              title:'Customer Lifecycle Tracking',
-              desc:'Every visit, purchase, and service is logged. Know exactly who is active, who is dormant, and who is about to churn - before it happens.',
-              highlights:['Full service history','Lifetime value tracking','Churn risk alerts'],
-            },
-            {
-              icon:'C',
-              title:'WhatsApp, SMS and Email',
-              desc:'Reach customers on the channels they actually use. Messages go out in your business name - customers never see Shih-Fu.',
-              highlights:['500M+ WhatsApp users in India','TRAI DLT compliant SMS','Branded email reminders'],
-            },
-            {
-              icon:'D',
-              title:'Revenue Recovery Dashboard',
-              desc:'See exactly how much revenue you are losing to missed follow-ups - and how much you have recovered through automated reminders.',
-              highlights:['Revenue at risk view','Reactivation tracking','Reminder ROI reports'],
-            },
-            {
-              icon:'E',
-              title:'Multi-Location Support',
-              desc:'Manage multiple branches, staff members, and customer lists from a single dashboard. Each location stays isolated and organised.',
-              highlights:['Unlimited locations (Scale plan)','Per-staff access controls','Consolidated reporting'],
-            },
-            {
-              icon:'F',
-              title:'Works in Your Language',
-              desc:'Send reminders in the language your customers speak - Hindi, Tamil, Telugu, Kannada, Malayalam, Marathi, Gujarati, Bengali, and more.',
-              highlights:['10 Indian languages','Per-customer language preference','Bilingual message templates'],
-            },
+          {
+            icon:'A',
+            title:'Automated Follow-Ups',
+            desc:'Set the next due date once. Shih-Fu schedules the reminder and sends it on the right day via WhatsApp, SMS, or Email.',
+            highlights:['Follow-up after every service','Due dates: vaccinations, servicing, renewals','You review the queue and can skip any reminder'],
+          },
+          {
+            icon:'B',
+            title:'Customer History in One Place',
+            desc:'Every visit and service is logged against the customer, with their pet, vehicle, or property details alongside.',
+            highlights:['Full service history','Amount and payment method per visit','Next due dates at a glance'],
+          },
+          {
+            icon:'C',
+            title:'Your Own Name and Inbox',
+            desc:'Email goes out from your own Gmail address, so replies land in your inbox and Shih-Fu never reads them. Customers see your business, not ours.',
+            highlights:['Email sent from your own mailbox','WhatsApp and SMS in your business name','Consent recorded per channel'],
+          },
+          {
+            icon:'D',
+            title:'Quick Check-in Form',
+            desc:'New customers fill in their own details on a tablet at your counter, or from a link you send when they call to book.',
+            highlights:['Counter mode for iPad or display','Send by WhatsApp or SMS','Tailored to your industry'],
+          },
+          {
+            icon:'E',
+            title:'Festival and Promo Campaigns',
+            desc:'Message your whole customer base at once, or schedule greetings and offers for the year ahead so nothing slips your mind.',
+            highlights:['Send now or schedule ahead','Only reaches customers who opted in','See what went out and to how many'],
+          },
+          {
+            icon:'F',
+            title:'Built for Your Industry',
+            desc:'Forms adapt to your business: pet details for vets, vehicle details for garages, property details for cleaning and pest control.',
+            highlights:['10 industries','Smart dropdowns (breed, make, model)','Set up in about three minutes'],
+          },
           ].map((f, i) => (
             <div key={i} className={`feature-card card-hover fade-up`} style={{ transitionDelay:`${i*0.08}s` }}>
               <div style={{ width:44, height:44, borderRadius:8, background:'rgba(200,168,75,0.12)', border:'1px solid rgba(200,168,75,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.8rem', fontWeight:800, color:'var(--gold)', marginBottom:'1.25rem', fontFamily:"'Playfair Display',serif" }}>{f.icon}</div>
@@ -209,7 +209,7 @@ export default function LandingPage() {
         <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', position:'relative' }}>
           <div style={{ position:'absolute', top:32, left:'10%', width:'80%', height:1, background:'var(--border)', zIndex:0 }}></div>
           {[
-            { num:'1', title:'Customer Added', desc:'Via form, QR code, CSV import, or manual entry.' },
+            { num:'1', title:'Customer Added', desc:'Through the quick check-in form, or add them yourself.' },
             { num:'2', title:'Service Logged', desc:'Record every visit, job, or appointment with full details.' },
             { num:'3', title:'Rules Trigger', desc:'The system calculates when to reach out next.' },
             { num:'4', title:'Message Sent', desc:'Personalised reminder delivered on their preferred channel.' },
@@ -270,33 +270,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* SOCIAL PROOF */}
-      <section style={{ padding:'7rem 4rem', background:'#f0e9d6' }}>
-        <div className="fade-up" style={{ fontSize:'.75rem', fontWeight:500, letterSpacing:'.16em', textTransform:'uppercase', color:'#c8a84b', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'.6rem' }}>
-          <span style={{ width:24, height:1, background:'#c8a84b', display:'block' }}></span>
-          Early Feedback
-        </div>
-        <h2 className="fade-up" style={{ fontFamily:"'Playfair Display',serif", fontSize:'clamp(2rem,4vw,3rem)', fontWeight:900, lineHeight:1.1, letterSpacing:'-0.02em', marginBottom:'3rem' }}>
-          Businesses across India that <em style={{ fontStyle:'italic', color:'var(--rust)' }}>never forget</em><br/>outperform those that do.
-        </h2>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.5rem' }}>
-          {[
-            { stars:5, text:'We used to lose 30 to 40 percent of our annual customers simply because we forgot to send reminders. Shih-Fu ended that problem completely.', name:'Dr. Priya Nair', biz:'PawCare Clinic, Bengaluru' },
-            { stars:5, text:'Our rebooking rate went from 42 percent to 71 percent in 90 days. The WhatsApp reminders feel personal - clients think I message them personally.', name:'Deepika Iyer', biz:'Glam Studio, Mumbai' },
-            { stars:5, text:'I have 800 plus customers. Before Shih-Fu, maybe 60 came back regularly. Now my service bay is booked two weeks out. The ROI is undeniable.', name:'Suresh Anand', biz:'SpeedTrack Auto, Chennai' },
-          ].map((p, i) => (
-            <div key={i} className={`proof-card card-hover fade-up`} style={{ transitionDelay:`${i*0.1}s` }}>
-              <div style={{ color:'#c8a84b', fontSize:'.9rem', letterSpacing:2, marginBottom:'1rem' }}>{'★'.repeat(p.stars)}</div>
-              <p style={{ fontSize:'.9rem', lineHeight:1.75, color:'#0d0d0d', marginBottom:'1.5rem', fontStyle:'italic', fontWeight:300 }}>"{p.text}"</p>
-              <div>
-                <div style={{ fontWeight:600, fontSize:'.875rem' }}>{p.name}</div>
-                <div style={{ fontSize:'.78rem', color:'#6b6456' }}>{p.biz}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* CTA BANNER - Fix #2: sign in / sign up options */}
       <section id="contact" style={{ background:'#0d0d0d', padding:'6rem 4rem', textAlign:'center', position:'relative', overflow:'hidden' }}>
         <h2 className="fade-up" style={{ fontFamily:"'Playfair Display',serif", fontSize:'clamp(2.2rem,5vw,4rem)', fontWeight:900, color:'#f5f0e8', lineHeight:1.05, marginBottom:'1.5rem' }}>
@@ -304,7 +277,7 @@ export default function LandingPage() {
           <em style={{ fontStyle:'italic', color:'#c8a84b' }}>you.</em>
         </h2>
         <p className="fade-up" style={{ color:'rgba(245,240,232,.6)', fontSize:'1rem', maxWidth:520, margin:'0 auto 2.5rem', lineHeight:1.75, fontWeight:300 }}>
-          Join thousands of service businesses across India using Shih-Fu to retain more customers automatically. First 50 businesses get 3 months free.
+          Set up in a few minutes and start reminding your customers. 30-day free trial, no credit card required.
         </p>
         <div className="fade-up" style={{ display:'flex', gap:'1rem', justifyContent:'center', flexWrap:'wrap' }}>
           <Link href="/signup" style={{ background:'#f5f0e8', color:'#0d0d0d', padding:'.9rem 2rem', fontSize:'.9rem', fontWeight:700, textDecoration:'none', borderRadius:3, transition:'all .25s', display:'inline-block', letterSpacing:'.04em' }}
@@ -317,7 +290,7 @@ export default function LandingPage() {
           </Link>
         </div>
         <div style={{ marginTop:'1.5rem', fontSize:'.78rem', color:'rgba(245,240,232,.35)', letterSpacing:'.05em' }}>
-          No credit card required. Setup in 5 minutes.
+          No credit card required.
         </div>
       </section>
 
@@ -332,7 +305,7 @@ export default function LandingPage() {
           ))}
         </div>
         <div style={{ fontSize:'.75rem', color:'rgba(245,240,232,.25)' }}>
-          2025 Shih-Fu Technologies Pvt. Ltd. Made in India
+          2026 Shih-Fu Technologies Pvt. Ltd. Made in India
         </div>
       </footer>
     </div>

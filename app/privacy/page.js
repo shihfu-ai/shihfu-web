@@ -4,7 +4,7 @@ import Link from 'next/link';
 const SECTIONS = [
   {
     h: '1. Who We Are',
-    body: `Shih-Fu ("Shih-Fu", "we", "us") is a product of Shih-Fu Technologies Pvt. Ltd., a retention and customer-communication platform for service businesses in India (veterinary clinics, salons, auto repair garages, and similar). This policy explains what information we collect, why, and how it is handled — both for the businesses who sign up to use Shih-Fu ("Businesses") and the customers those Businesses serve ("Customers").`,
+    body: `Shih-Fu ("Shih-Fu", "we", "us") is a product of Shih-Fu Technologies Pvt. Ltd., a retention and customer-communication platform for service businesses in India (veterinary clinics, salons, auto repair garages, and similar). This policy explains what information we collect, why, and how it is handled, both for the businesses who sign up to use Shih-Fu ("Businesses") and the customers those Businesses serve ("Customers").`,
   },
   {
     h: '2. Information We Collect',
@@ -23,7 +23,7 @@ const SECTIONS = [
   },
   {
     h: '4. Google User Data and the "Limited Use" Policy',
-    body: `If you choose to connect a Google account so Shih-Fu can send reminder and campaign emails through your own mailbox, we request only the narrow "send email" permission (Gmail's gmail.send scope). With this permission, Shih-Fu can compose and send messages through your account, but cannot read your inbox, your existing emails, or anyone's replies to you — those stay private to you in your own mailbox.
+    body: `If you choose to connect a Google account so Shih-Fu can send reminder and campaign emails through your own mailbox, we request only the narrow "send email" permission (Gmail's gmail.send scope). With this permission, Shih-Fu can compose and send messages through your account, but cannot read your inbox, your existing emails, or anyone's replies to you, those stay private to you in your own mailbox.
 
 Shih-Fu's use and transfer of information received from Google APIs to any other app will adhere to the Google API Services User Data Policy, including the Limited Use requirements. We use the Google user data we receive solely to send the messages you request through this Service, and for no other purpose. You can revoke this access at any time from your Shih-Fu account settings or directly from your Google Account's third-party access settings, and we delete the associated access token immediately when you do.`,
   },
@@ -31,15 +31,15 @@ Shih-Fu's use and transfer of information received from Google APIs to any other
     h: '5. How We Share Information',
     body: 'We share information only with the service providers needed to deliver messages you send, and only the minimum needed for that purpose:',
     list: [
-      'Meta (WhatsApp Business Platform) — to deliver WhatsApp messages.',
-      'Twilio — to deliver SMS messages, in compliance with India’s TRAI DLT regulations.',
-      'Your connected email provider (e.g. Google) or our email delivery provider — to deliver email messages.',
-      'Our database and hosting infrastructure providers — to store and run the Service securely.',
+      'Meta (WhatsApp Business Platform), to deliver WhatsApp messages.',
+      'Twilio, to deliver SMS messages, in compliance with India’s TRAI DLT regulations.',
+      'Your connected email provider (e.g. Google) or our email delivery provider, to deliver email messages.',
+      'Our database and hosting infrastructure providers, to store and run the Service securely.',
     ],
   },
   {
     h: '6. Data Security',
-    body: 'Passwords are stored using industry-standard one-way hashing and are never stored in plain text. Any OAuth tokens used to send email on your behalf are encrypted at rest. Access to customer data within Shih-Fu is isolated per business — one Business can never see another Business’s customers or messages.',
+    body: 'Passwords are stored using industry-standard one-way hashing and are never stored in plain text. Any OAuth tokens used to send email on your behalf are encrypted at rest. Access to customer data within Shih-Fu is isolated per business, one Business can never see another Business’s customers or messages.',
   },
   {
     h: '7. Data Retention',

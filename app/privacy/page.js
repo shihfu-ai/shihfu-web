@@ -14,12 +14,13 @@ const SECTIONS = [
       'Customer records you enter or import: your customers’ names, phone numbers, email addresses, addresses, and details about the pets, vehicles, or other assets you service, entered by you or your staff.',
       'Service and communication history: service events you log, reminders and campaigns you send, and delivery status (sent, failed, skipped) for each message.',
       'If you connect a Google account to send email: the email address of the connected account and a narrowly-scoped authorization token that lets Shih-Fu send messages through that account on your behalf. See Section 4 below.',
+      'Booking and follow-up activity: every message to a customer includes a unique booking link. We record when that link is opened and whether an appointment is booked through it, together with the type of message, the channel it was sent on and when it was sent, plus the appointments themselves (date, time, service and any note the customer adds).',
       'Usage data: log-in activity and basic technical logs (IP address, browser type) used for security and troubleshooting.',
     ],
   },
   {
     h: '3. How We Use Information',
-    body: 'We use the information above only to operate the Service: to let you manage your customer records, log service visits, and send the reminders and promotional messages you configure, on your behalf and in your business’s name. We do not sell personal data, and we do not use your customers’ data for our own marketing.',
+    body: 'We use the information above only to operate the Service: to let you manage your customer records, log service visits, and send the reminders and promotional messages you configure, on your behalf and in your business’s name. We also use booking and follow-up activity to show each Business which messages and channels bring its own customers back. This analysis is done separately for each Business using only that Business’s own data; we do not combine one Business’s customer data with another’s. We do not sell personal data, and we do not use your customers’ data for our own marketing.',
   },
   {
     h: '4. Google User Data and the "Limited Use" Policy',
@@ -82,7 +83,7 @@ export default function PrivacyPolicyPage() {
           <h1 style={{ fontFamily:"'Playfair Display',serif", fontSize:'2.6rem', fontWeight:900, color:'var(--ink)', lineHeight:1.1, letterSpacing:'-0.02em', marginBottom:'1rem' }}>
             Privacy <em style={{ fontStyle:'italic', color:'var(--gold)' }}>Policy</em>
           </h1>
-          <p style={{ fontSize:'0.85rem', color:'var(--muted)' }}>Last updated: 16 September 2026</p>
+          <p style={{ fontSize:'0.85rem', color:'var(--muted)' }}>Last updated: 6 October 2026</p>
         </div>
 
         {SECTIONS.map((s, i) => (

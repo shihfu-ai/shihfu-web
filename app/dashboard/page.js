@@ -157,6 +157,82 @@ function CustomerFormFields({
 }
 
 // ─── Main Dashboard ───────────────────────────────────────────────
+// ─── Follow-up performance (sent -> opened booking page -> booked) ───
+const CH_LABEL = { whatsapp:'WhatsApp', sms:'SMS', email:'Email' };
+const pct = (n, d) => (d ? `${Math.round((n / d) * 100)}%` : 'n/a');
+
+function FollowupPerformance({ data, days, setDays }) {
+  const t = data?.totals;
+  const channels = data?.by_channel || [];
+  const comparable = channels.filter(c => c.sent >= 10).sort((a, b) => (b.booked / b.sent) - (a.booked / a.sent));
+  const best = comparable.length >= 2 ? comparable[0] : null;
+  const cell = { padding:'.75rem 1rem', fontSize:'.85rem' };
+  const th = { padding:'.65rem 1rem', textAlign:'left', fontSize:'.68rem', fontWeight:500, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--muted)' };
+
+  return (
+    <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden', marginBottom:16 }}>
+      <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div>
+          <span style={{ fontSize:'.85rem', fontWeight:600, color:'var(--ink)' }}>Follow-up Performance</span>
+          <div style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:2 }}>Every message carries a booking link, so you can see what brings customers back</div>
+        </div>
+        <select value={days} onChange={e => setDays(Number(e.target.value))} style={{ border:'1px solid var(--border)', borderRadius:4, padding:'.35rem .6rem', fontFamily:'inherit', fontSize:'.78rem', color:'var(--ink)', background:'white', cursor:'pointer' }}>
+          <option value={30}>Last 30 days</option>
+          <option value={90}>Last 90 days</option>
+          <option value={180}>Last 180 days</option>
+        </select>
+      </div>
+
+      {!t || t.sent === 0 ? (
+        <div style={{ padding:'2rem 1.5rem', textAlign:'center', color:'var(--muted)', fontSize:'.875rem', lineHeight:1.6 }}>
+          No data yet. Once your reminders and promotions go out, you will see here how many customers opened the booking page and how many booked, by channel.
+        </div>
+      ) : (
+        <>
+          <div style={{ display:'flex' }}>
+            {[
+              { label:'Messages sent',       val:t.sent,    sub:'' },
+              { label:'Opened booking page', val:t.clicked, sub:pct(t.clicked, t.sent) },
+              { label:'Booked',              val:t.booked,  sub:pct(t.booked, t.sent) },
+              { label:'Came back in 14 days',val:t.returned,sub:t.matured ? `${pct(t.returned, t.matured)} of ${t.matured}` : 'too early to tell' },
+            ].map((x, i) => (
+              <div key={i} style={{ flex:1, textAlign:'center', padding:'1.1rem .75rem', borderRight:i<3?'1px solid var(--border)':'none' }}>
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.8rem', fontWeight:700, color:'var(--ink)', lineHeight:1 }}>{x.val}</div>
+                <div style={{ fontSize:'.68rem', fontWeight:500, color:'var(--muted)', marginTop:4, textTransform:'uppercase', letterSpacing:'.08em' }}>{x.label}</div>
+                {x.sub && <div style={{ fontSize:'.78rem', fontWeight:600, color:'var(--gold)', marginTop:3 }}>{x.sub}</div>}
+              </div>
+            ))}
+          </div>
+          <table style={{ width:'100%', borderCollapse:'collapse', borderTop:'1px solid var(--border)' }}>
+            <thead><tr style={{ background:'var(--warm)', borderBottom:'1px solid var(--border)' }}>
+              {['Channel','Sent','Opened','Booked','Booking rate','Avg time to book'].map(h => <th key={h} style={th}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {channels.map(c => (
+                <tr key={c.key} style={{ borderBottom:'1px solid var(--border)' }}>
+                  <td style={{ ...cell, fontWeight:600 }}>{CH_LABEL[c.key] || c.key}</td>
+                  <td style={cell}>{c.sent}</td>
+                  <td style={cell}>{c.clicked} <span style={{ color:'var(--muted)' }}>({pct(c.clicked, c.sent)})</span></td>
+                  <td style={cell}>{c.booked}</td>
+                  <td style={{ ...cell, fontWeight:700, color:'var(--gold)' }}>{pct(c.booked, c.sent)}</td>
+                  <td style={{ ...cell, color:'var(--muted)' }}>{c.avg_hours_to_book === null ? 'n/a' : c.avg_hours_to_book < 1 ? 'under an hour' : c.avg_hours_to_book < 48 ? `${c.avg_hours_to_book} hours` : `${Math.round(c.avg_hours_to_book / 24)} days`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ padding:'.9rem 1.25rem', fontSize:'.8rem', color:'var(--muted)', lineHeight:1.6, borderTop:'1px solid var(--border)' }}>
+            {best
+              ? `${CH_LABEL[best.key] || best.key} is converting best so far: ${pct(best.booked, best.sent)} of its messages led to a booking.`
+              : 'To compare channels, send at least 10 messages on each. Until then the numbers are too small to say which works better.'}
+            {data.appointments && (data.appointments.from_followups + data.appointments.added_by_hand) > 0 &&
+              ` Appointments in this period: ${data.appointments.from_followups} from follow-up links, ${data.appointments.added_by_hand} added by you.`}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const router     = useRouter();
   const profileRef = useRef(null);
@@ -173,6 +249,15 @@ export default function DashboardPage() {
   const [events, setEvents]                   = useState([]);
   const [campaigns, setCampaigns]             = useState([]);
   const [loading, setLoading]                 = useState(true);
+  const [appts, setAppts]                     = useState([]);
+  const [apptRange, setApptRange]             = useState('upcoming');
+  const [apptSummary, setApptSummary]         = useState({});
+  const [apptLoading, setApptLoading]         = useState(false);
+  const [followups, setFollowups]             = useState(null);
+  const [fuDays, setFuDays]                   = useState(90);
+  const [showAppt, setShowAppt]               = useState(false);
+  const [apptSaving, setApptSaving]           = useState(false);
+  const [apptForm, setApptForm]               = useState({ customerId:'', startAt:'', durationMin:'30', serviceType:'', notes:'' });
   const [search, setSearch]                   = useState('');
   const [toast, setToast]                     = useState(null);
   const [showProfile, setShowProfile]         = useState(false);
@@ -249,6 +334,10 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
+  useEffect(() => { if (!loading) loadFollowups(fuDays); }, [fuDays, loading]);
+  useEffect(() => { if (!loading) refreshApptSummary(); }, [loading]);
+  useEffect(() => { if (!loading && activePanel === 'appointments') loadAppointments(apptRange); }, [activePanel, apptRange, loading]);
+
   // The list endpoints return at most 100 rows per page; a business can have
   // hundreds of customers, so walk the pages (capped) rather than silently
   // showing only the first few.
@@ -281,6 +370,46 @@ export default function DashboardPage() {
       setCampaigns(camps.data || []);
     } catch { showToast('Something went wrong loading data','error'); }
     finally   { setLoading(false); }
+  }
+
+  async function loadFollowups(days) {
+    try { const res = await api.getFollowupAnalytics(days); setFollowups(res.data); }
+    catch { setFollowups(null); }
+  }
+  async function refreshApptSummary() {
+    try { const res = await api.getAppointmentSummary(); setApptSummary(res.data || {}); } catch { /* badge only */ }
+  }
+  async function loadAppointments(range) {
+    setApptLoading(true);
+    try { const res = await api.getAppointments({ range, limit: 100 }); setAppts(res.data || []); }
+    catch (err) { showToast(err.message || 'Could not load appointments', 'error'); }
+    finally { setApptLoading(false); }
+  }
+  async function setApptStatus(id, status) {
+    try {
+      await api.updateAppointment(id, { status });
+      showToast(status === 'completed' ? 'Marked as completed' : status === 'no_show' ? 'Marked as no show' : 'Appointment cancelled');
+      loadAppointments(apptRange); refreshApptSummary();
+    } catch (err) { showToast(err.message || 'Could not update the appointment', 'error'); }
+  }
+  async function handleAddAppt(e) {
+    e.preventDefault();
+    if (!apptForm.customerId || !apptForm.startAt) { showToast('Choose a customer and a time', 'error'); return; }
+    setApptSaving(true);
+    try {
+      await api.createAppointment({
+        customerId: apptForm.customerId,
+        startAt: new Date(apptForm.startAt).toISOString(),
+        durationMin: Number(apptForm.durationMin) || 30,
+        serviceType: apptForm.serviceType.trim() || undefined,
+        notes: apptForm.notes.trim() || undefined,
+      });
+      showToast('Appointment added');
+      setShowAppt(false);
+      setApptForm({ customerId:'', startAt:'', durationMin:'30', serviceType:'', notes:'' });
+      loadAppointments(apptRange); refreshApptSummary(); loadFollowups(fuDays);
+    } catch (err) { showToast(err.message || 'Could not add the appointment', 'error'); }
+    finally { setApptSaving(false); }
   }
 
   function showToast(msg, type='success') {
@@ -582,6 +711,7 @@ export default function DashboardPage() {
   const navItems = [
     { id:'overview',   label:'Overview' },
     { id:'customers',  label:'Customers' },
+    { id:'appointments', label:'Appointments' },
     { id:'servicelog', label:'Service Log' },
     { id:'reminders',  label:'Reminder Queue' },
   ];
@@ -628,6 +758,7 @@ export default function DashboardPage() {
           {navItems.map(n => (
             <div key={n.id} onClick={() => setActivePanel(n.id)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'.65rem .75rem', borderRadius:6, cursor:'pointer', marginBottom:2, background:activePanel===n.id?'rgba(200,168,75,.1)':'transparent', color:activePanel===n.id?'var(--gold)':'var(--muted)', fontWeight:activePanel===n.id?600:400, border:activePanel===n.id?'1px solid rgba(200,168,75,.2)':'1px solid transparent', fontSize:'.875rem', transition:'all .15s' }}>
               {n.label}
+              {n.id==='appointments' && apptSummary.today > 0 && <span title="Appointments today" style={{ background:'var(--gold)', color:'var(--ink)', fontSize:'.62rem', fontWeight:700, padding:'1px 6px', borderRadius:10 }}>{apptSummary.today}</span>}
               {n.id==='reminders' && queue.overdue > 0 && <span style={{ background:'var(--rust)', color:'white', fontSize:'.62rem', fontWeight:700, padding:'1px 6px', borderRadius:10 }}>{queue.overdue}</span>}
             </div>
           ))}
@@ -722,6 +853,8 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </div>
+
+              <FollowupPerformance data={followups} days={fuDays} setDays={setFuDays} />
 
               <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
                 <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -874,6 +1007,67 @@ export default function DashboardPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* APPOINTMENTS */}
+          {activePanel === 'appointments' && (
+            <div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+                <div>
+                  <div className="sf-section-label" style={{ marginBottom:'.25rem' }}>Bookings</div>
+                  <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.5rem', fontWeight:700, color:'var(--ink)' }}>Appointments</h2>
+                </div>
+                <button className="sf-btn-primary" onClick={() => setShowAppt(true)}>+ Add Appointment</button>
+              </div>
+              <div style={{ display:'flex', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden', marginBottom:16, background:'white' }}>
+                {[{label:'Today',val:apptSummary.today||0,color:'var(--gold)'},{label:'Upcoming',val:apptSummary.upcoming||0,color:'#4a7c59'},{label:'From follow-up links (30 days)',val:apptSummary.from_followups_30d||0,color:'var(--ink)'}].map((x,i) => (
+                  <div key={i} style={{ flex:1, padding:'1rem', textAlign:'center', borderRight:i<2?'1px solid var(--border)':'none' }}>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.8rem', fontWeight:700, color:x.color, lineHeight:1 }}>{x.val}</div>
+                    <div style={{ fontSize:'.68rem', fontWeight:500, color:'var(--muted)', marginTop:4, textTransform:'uppercase', letterSpacing:'.08em' }}>{x.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
+                <div style={{ padding:'.75rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', gap:8 }}>
+                  {[['upcoming','Upcoming'],['past','Past and closed']].map(([id,label]) => (
+                    <button key={id} onClick={() => setApptRange(id)} style={{ padding:'.4rem .9rem', borderRadius:4, fontSize:'.78rem', fontWeight:apptRange===id?700:500, cursor:'pointer', fontFamily:'inherit', border:apptRange===id?'1px solid var(--gold)':'1px solid var(--border)', background:apptRange===id?'rgba(200,168,75,.12)':'white', color:'var(--ink)' }}>{label}</button>
+                  ))}
+                </div>
+                {appts.map(a => (
+                  <div key={a.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', flexWrap:'wrap' }}>
+                    <div style={{ width:150, flexShrink:0 }}>
+                      <div style={{ fontSize:'.875rem', fontWeight:600, color:'var(--ink)' }}>{new Date(a.start_at).toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', timeZone:'Asia/Kolkata' })}</div>
+                      <div style={{ fontSize:'.78rem', color:'var(--muted)', marginTop:2 }}>{new Date(a.start_at).toLocaleTimeString('en-IN', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'Asia/Kolkata' })} for {a.duration_min} min</div>
+                    </div>
+                    <div style={{ flex:1, minWidth:160 }}>
+                      <span onClick={() => openProfile({ id:a.customer_id })} style={{ fontSize:'.875rem', fontWeight:600, color:'var(--gold)', cursor:'pointer', textDecoration:'underline', textDecorationColor:'rgba(200,168,75,.35)', textUnderlineOffset:3 }}>{a.customer_name}</span>
+                      <div style={{ fontSize:'.78rem', color:'var(--muted)', marginTop:2 }}>{a.entity_name ? `${a.entity_name} / ` : ''}{a.service_type || 'No service noted'} / +91 {a.customer_phone}</div>
+                      {a.notes && <div style={{ fontSize:'.76rem', color:'var(--muted)', marginTop:2, fontStyle:'italic' }}>Note: {a.notes}</div>}
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'flex-start', flexShrink:0 }}>
+                      {a.booked_via_channel
+                        ? <span className={pill(a.booked_via_channel)}>Booked via {CH_LABEL[a.booked_via_channel] || a.booked_via_channel} link</span>
+                        : <span className="sf-pill sf-pill-dormant">Added by you</span>}
+                      <span className={pill(a.status==='completed'?'active':a.status==='booked'?'whatsapp':'dormant')}>{a.status==='no_show'?'no show':a.status}</span>
+                    </div>
+                    {a.status === 'booked' && (
+                      <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                        <button onClick={() => setApptStatus(a.id,'completed')} style={{ padding:'5px 12px', borderRadius:4, fontSize:'.75rem', fontWeight:600, cursor:'pointer', border:'1px solid rgba(74,124,89,.3)', background:'rgba(74,124,89,.08)', color:'#4a7c59', fontFamily:'inherit' }}>Completed</button>
+                        <button onClick={() => setApptStatus(a.id,'no_show')} style={{ padding:'5px 12px', borderRadius:4, fontSize:'.75rem', fontWeight:500, cursor:'pointer', border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', fontFamily:'inherit' }}>No show</button>
+                        <button onClick={() => { if (window.confirm('Cancel this appointment?')) setApptStatus(a.id,'cancelled'); }} style={{ padding:'5px 12px', borderRadius:4, fontSize:'.75rem', fontWeight:500, cursor:'pointer', border:'1px solid rgba(196,83,42,.25)', background:'transparent', color:'var(--rust)', fontFamily:'inherit' }}>Cancel</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {!apptLoading && appts.length===0 && (
+                  <div style={{ padding:'3rem 1.5rem', textAlign:'center', color:'var(--muted)', fontSize:'.875rem', lineHeight:1.6 }}>
+                    {apptRange==='upcoming' ? 'No upcoming appointments. When a customer books from the link in a reminder or promotion, it appears here.' : 'Nothing here yet.'}
+                  </div>
+                )}
+                {apptLoading && <div style={{ padding:'2rem', textAlign:'center', color:'var(--muted)', fontSize:'.85rem' }}>Loading...</div>}
+              </div>
+              <p style={{ marginTop:12, fontSize:'.75rem', color:'var(--muted)' }}>Set your opening hours, appointment length and how many customers you can see at once in Account Settings, under Booking.</p>
             </div>
           )}
 
@@ -1279,6 +1473,52 @@ export default function DashboardPage() {
                 <button type="submit" className="sf-btn-primary" style={{ flex:1, padding:'.8rem', opacity:campaignSaving?.7:1 }} disabled={campaignSaving}>
                   {campaignSaving ? 'Saving...' : campaignForm.when==='now' ? 'Send Now' : 'Schedule Campaign'}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD APPOINTMENT */}
+      {showAppt && (
+        <div style={OVERLAY} onClick={() => setShowAppt(false)}>
+          <div style={MBOX} onClick={e=>e.stopPropagation()}>
+            <div style={MHEAD}>
+              <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.2rem', fontWeight:700, color:'var(--ink)' }}>Add an Appointment</h3>
+              <button style={CLOSEBTN} onClick={() => setShowAppt(false)}>x</button>
+            </div>
+            <form onSubmit={handleAddAppt} style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
+              <div>
+                <label style={LBL}>Customer *</label>
+                <select style={{ ...INP, cursor:'pointer' }} value={apptForm.customerId} onChange={e=>setApptForm(f=>({...f,customerId:e.target.value}))} required>
+                  <option value="">Select customer...</option>
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}{c.entity_name?` (${c.entity_name})`:''}</option>)}
+                </select>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
+                <div>
+                  <label style={LBL}>Date and time *</label>
+                  <input style={INP} type="datetime-local" value={apptForm.startAt} onChange={e=>setApptForm(f=>({...f,startAt:e.target.value}))} required />
+                </div>
+                <div>
+                  <label style={LBL}>Length (minutes)</label>
+                  <input style={INP} type="number" min="5" max="480" step="5" value={apptForm.durationMin} onChange={e=>setApptForm(f=>({...f,durationMin:e.target.value}))} />
+                </div>
+              </div>
+              <div>
+                <label style={LBL}>Service</label>
+                <select style={{ ...INP, cursor:'pointer' }} value={apptForm.serviceType} onChange={e=>setApptForm(f=>({...f,serviceType:e.target.value}))}>
+                  <option value="">Not specified</option>
+                  {serviceOpts.map(sv => <option key={sv} value={sv}>{sv}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={LBL}>Notes</label>
+                <textarea style={{ ...INP, resize:'vertical' }} rows={2} maxLength={500} value={apptForm.notes} onChange={e=>setApptForm(f=>({...f,notes:e.target.value}))} />
+              </div>
+              <div style={{ display:'flex', gap:8, marginTop:'.5rem' }}>
+                <button type="button" className="sf-btn-ghost" style={{ flex:1, padding:'.8rem' }} onClick={() => setShowAppt(false)}>Cancel</button>
+                <button type="submit" className="sf-btn-primary" style={{ flex:1, padding:'.8rem', opacity:apptSaving?.7:1 }} disabled={apptSaving}>{apptSaving ? 'Saving...' : 'Add Appointment'}</button>
               </div>
             </form>
           </div>

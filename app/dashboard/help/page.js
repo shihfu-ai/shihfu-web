@@ -45,6 +45,27 @@ const FAQS = [
     ],
   },
   {
+    section: 'Booking and Results',
+    items: [
+      {
+        q: 'What is the booking link in my messages?',
+        a: 'Every reminder and promotion you send ends with a personal link. The customer opens it, picks a day and time from your open slots, and books in a few seconds. The appointment appears under Appointments in your dashboard. You can switch the link off, or change your opening hours, appointment length and how many customers you can take at once, in Account Settings under Booking.',
+      },
+      {
+        q: 'How do I see which messages are working?',
+        a: 'The Overview page has a Follow-up Performance section. For each channel it shows how many messages were sent, how many customers opened the booking page, how many booked, and how many came back within 14 days. Channels are only worth comparing once each has at least 10 messages, so give it a few weeks of sending.',
+      },
+      {
+        q: 'A customer called instead of using the link. Does that count?',
+        a: 'Add the appointment yourself with "+ Add Appointment" so your calendar is complete. It is recorded as added by you, so it does not inflate the booking rate of a message. If the customer comes in and you log the visit, it still counts towards the "came back in 14 days" figure.',
+      },
+      {
+        q: 'Can customers cancel or change their appointment?',
+        a: 'Yes. The same link shows their booking with options to choose another time or cancel. A cancelled slot becomes available to others straight away.',
+      },
+    ],
+  },
+  {
     section: 'Customer Records',
     items: [
       {

@@ -37,6 +37,37 @@ function SettingsPageInner() {
   const [connectingGoogle, setConnectingGoogle]   = useState(false);
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
 
+  // Booking (hours and capacity behind the link in every message)
+  const [booking, setBooking]       = useState(null);
+  const [savingBooking, setSavingBooking] = useState(false);
+
+  async function loadBooking() {
+    try { const res = await api.getBookingSettings(); setBooking(res.data.settings); }
+    catch { /* tab shows a loading line; the rest of settings still works */ }
+  }
+
+  async function handleSaveBooking(e) {
+    e.preventDefault();
+    if (booking.days.length === 0) { showToast('Choose at least one open day','error'); return; }
+    if (booking.close <= booking.open) { showToast('Closing time must be after opening time','error'); return; }
+    setSavingBooking(true);
+    try {
+      const res = await api.saveBookingSettings({
+        enabled: booking.enabled, days: booking.days, open: booking.open, close: booking.close,
+        slotMinutes: Number(booking.slotMinutes), capacity: Number(booking.capacity),
+        maxDaysAhead: Number(booking.maxDaysAhead), minNoticeHours: Number(booking.minNoticeHours),
+      });
+      setBooking(res.data.settings);
+      showToast('Booking settings saved');
+    } catch (err) {
+      showToast(err.message || 'Could not save booking settings','error');
+    } finally { setSavingBooking(false); }
+  }
+
+  function toggleDay(d) {
+    setBooking(b => ({ ...b, days: b.days.includes(d) ? b.days.filter(x => x !== d) : [...b.days, d].sort() }));
+  }
+
   function showToast(msg, type='success') {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
@@ -53,6 +84,7 @@ function SettingsPageInner() {
       setProfile({ name: res.data.name || '', phone: res.data.business_phone || '' });
     }).catch(() => {});
     loadEmailConnection();
+    loadBooking();
   }, []);
 
   // After Google redirects back from the consent screen
@@ -147,6 +179,7 @@ function SettingsPageInner() {
   const tabs = [
     { id:'profile',  label:'Profile' },
     { id:'email',    label:'Email' },
+    { id:'booking',  label:'Booking' },
     { id:'password', label:'Password' },
   ];
   const onFocus = e => { e.target.style.borderColor='var(--gold)'; e.target.style.boxShadow='0 0 0 3px rgba(200,168,75,0.1)'; };
@@ -249,6 +282,72 @@ function SettingsPageInner() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── BOOKING ── */}
+        {activeTab==='booking' && (
+          !booking ? <div style={{ fontSize:'0.85rem', color:'var(--muted)' }}>Loading...</div> : (
+          <form onSubmit={handleSaveBooking}>
+            <div style={card}>
+              <div style={sectionTitle}>Online Booking</div>
+              <div style={sectionSub}>
+                Every reminder and promotion you send includes a link where the customer can pick a time and book. These settings decide which times they can choose.
+                Bookings appear under Appointments in your dashboard, and Shih-Fu tracks which messages lead to bookings so you can see what works.
+              </div>
+
+              <label style={{ display:'flex', alignItems:'center', gap:'0.6rem', fontSize:'0.9rem', fontWeight:600, color:'var(--ink)', marginBottom:'1.5rem', cursor:'pointer' }}>
+                <input type="checkbox" checked={booking.enabled} onChange={e=>setBooking(b=>({...b,enabled:e.target.checked}))} style={{ width:18, height:18, accentColor:'var(--gold)' }}/>
+                Include a booking link in my messages
+              </label>
+
+              <div style={{ opacity:booking.enabled?1:.5, pointerEvents:booking.enabled?'auto':'none' }}>
+                <label style={lbl}>Days you take appointments</label>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:'1.5rem' }}>
+                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((n,d) => (
+                    <button type="button" key={d} onClick={() => toggleDay(d)}
+                      style={{ padding:'0.55rem 1rem', borderRadius:6, cursor:'pointer', fontFamily:'inherit', fontSize:'0.85rem', fontWeight:booking.days.includes(d)?700:500,
+                        border:booking.days.includes(d)?'1px solid var(--gold)':'1px solid var(--border)', background:booking.days.includes(d)?'rgba(200,168,75,.14)':'white', color:'var(--ink)' }}>{n}</button>
+                  ))}
+                </div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.25rem', marginBottom:'1.25rem' }}>
+                  <div>
+                    <label style={lbl}>Opens</label>
+                    <input style={inp} type="time" value={booking.open} onChange={e=>setBooking(b=>({...b,open:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>Closes</label>
+                    <input style={inp} type="time" value={booking.close} onChange={e=>setBooking(b=>({...b,close:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>Appointment length</label>
+                    <select style={{ ...inp, cursor:'pointer' }} value={booking.slotMinutes} onChange={e=>setBooking(b=>({...b,slotMinutes:e.target.value}))}>
+                      {[15,20,30,45,60,90,120].map(m => <option key={m} value={m}>{m} minutes</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Customers at the same time</label>
+                    <input style={inp} type="number" min="1" max="50" value={booking.capacity} onChange={e=>setBooking(b=>({...b,capacity:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>How far ahead (days)</label>
+                    <input style={inp} type="number" min="1" max="90" value={booking.maxDaysAhead} onChange={e=>setBooking(b=>({...b,maxDaysAhead:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                  <div>
+                    <label style={lbl}>Minimum notice (hours)</label>
+                    <input style={inp} type="number" min="0" max="72" value={booking.minNoticeHours} onChange={e=>setBooking(b=>({...b,minNoticeHours:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
+                  </div>
+                </div>
+                <div style={{ fontSize:'0.78rem', color:'var(--muted)', lineHeight:1.6 }}>
+                  Times are Indian Standard Time. &quot;Customers at the same time&quot; is how many bookings one slot can take, for example the number of chairs, bays or staff you have.
+                </div>
+              </div>
+            </div>
+            <button type="submit" disabled={savingBooking} className="sf-btn-primary" style={{ padding:'0.85rem 2.5rem', opacity:savingBooking?.7:1 }}>
+              {savingBooking ? 'Saving...' : 'Save Booking Settings'}
+            </button>
+          </form>
+          )
         )}
 
         {/* ── PASSWORD ── */}

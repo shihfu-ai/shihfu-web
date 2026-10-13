@@ -107,8 +107,8 @@ const FAQS = [
         a: 'Only the services needed to deliver your messages: Meta (WhatsApp), your SMS provider, and Google (for email sent from your own Gmail). We do not sell data or use your customers\' details for our own marketing. See our Privacy Policy for the full detail.',
       },
       {
-        q: 'Is Shih-Fu compliant with India\'s DPDP Act?',
-        a: 'Shih-Fu is built with the DPDP Act in mind: we record what each customer has agreed to and when, and only message customers on channels they have agreed to. As the business, you remain responsible for having the right to contact your own customers. For specific compliance questions, write to shihfu.ai@gmail.com.',
+        q: 'Does Shih-Fu follow data protection and messaging laws in my country?',
+        a: 'Shih-Fu is built around consent: we record what each customer has agreed to and when, and only message customers on channels they have agreed to. That supports the rules in many countries, for example the GDPR in Europe and the UK, the DPDP Act in India, and the consent rules for texts and email in the US. The laws differ by country, so as the business you remain responsible for having the right to contact your own customers and for following the rules where you operate. Data is stored in Singapore. For specific questions, write to shihfu.ai@gmail.com.',
       },
     ],
   },
@@ -149,7 +149,7 @@ export default function HelpPage() {
           <div>
             <div style={{ fontSize:'0.75rem', fontWeight:500, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--gold)', marginBottom:'0.3rem' }}>Contact Support</div>
             <div style={{ fontSize:'0.95rem', fontWeight:600, color:'var(--ink)' }}>We typically respond within 24 hours</div>
-            <div style={{ fontSize:'0.85rem', color:'var(--muted)', marginTop:'0.25rem' }}>Monday to Saturday, 9 AM to 6 PM IST</div>
+            <div style={{ fontSize:'0.85rem', color:'var(--muted)', marginTop:'0.25rem' }}>Monday to Saturday, 9 AM to 6 PM India Standard Time (UTC+5:30)</div>
           </div>
           <a href="mailto:shihfu.ai@gmail.com" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', background:'var(--ink)', color:'var(--cream)', padding:'0.75rem 1.5rem', borderRadius:4, fontSize:'0.875rem', fontWeight:600, textDecoration:'none', letterSpacing:'0.04em', transition:'background .2s' }}
             onMouseEnter={e => e.currentTarget.style.background='var(--gold)'}

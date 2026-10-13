@@ -110,7 +110,7 @@ function ForgotPasswordInner() {
               <form onSubmit={handleRequestCode} style={{ display:'flex', flexDirection:'column', gap:'1.1rem' }}>
                 <div>
                   <label style={lbl}>Business Email</label>
-                  <input style={inp} type="email" required placeholder="hello@yourshop.in"
+                  <input style={inp} type="email" required placeholder="hello@yourbusiness.com"
                     value={email} onChange={e=>setEmail(e.target.value)} onFocus={onFocus} onBlur={onBlur}/>
                 </div>
                 <button type="submit" disabled={loading} className="sf-btn-primary" style={{ width:'100%', padding:'.9rem', opacity:loading?.6:1 }}>

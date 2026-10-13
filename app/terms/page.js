@@ -48,7 +48,7 @@ const SECTIONS = [
   },
   {
     h: '12. Governing Law',
-    body: 'These Terms are governed by the laws of India. Any dispute shall be subject to the exclusive jurisdiction of the courts of Bengaluru, Karnataka.',
+    body: 'The Service is available to businesses worldwide, and you are responsible for following the laws that apply where you operate and where your customers are, including rules on marketing messages, consent and data protection. These Terms are governed by the laws of India, and any dispute shall be subject to the exclusive jurisdiction of the courts of Bengaluru, Karnataka. Nothing in these Terms limits any right you have under mandatory consumer or data protection law where you live.',
   },
   {
     h: '13. Changes to These Terms',

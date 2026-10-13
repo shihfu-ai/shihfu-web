@@ -3,6 +3,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getStaff, isLoggedIn, api } from '../../../lib/api';
+import { getGeo, DEFAULT_GEO, checkPhone, phonePlaceholder, timezoneLabel } from '../../../lib/geo';
+import { APPOINTMENT_LENGTHS, lengthLabel, DAY_NAMES, toMin, clock } from '../../../lib/booking-options';
 
 // useSearchParams() requires a Suspense boundary during static
 // prerendering, or `next build` fails outright - Next.js bails the whole
@@ -39,25 +41,38 @@ function SettingsPageInner() {
 
   // Booking (hours and capacity behind the link in every message)
   const [booking, setBooking]       = useState(null);
+  const [geo, setGeo]                 = useState(DEFAULT_GEO);
+  const [zones, setZones]             = useState([]);
+  const [timezone, setTimezone]       = useState('');
   const [savingBooking, setSavingBooking] = useState(false);
 
   async function loadBooking() {
-    try { const res = await api.getBookingSettings(); setBooking(res.data.settings); }
+    try {
+      const res = await api.getBookingSettings();
+      setBooking(res.data.settings);
+      setZones(res.data.timezones || []);
+      setTimezone(res.data.timezone || '');
+    }
     catch { /* tab shows a loading line; the rest of settings still works */ }
   }
 
   async function handleSaveBooking(e) {
     e.preventDefault();
     if (booking.days.length === 0) { showToast('Choose at least one open day','error'); return; }
-    if (booking.close <= booking.open) { showToast('Closing time must be after opening time','error'); return; }
+    if (toMin(booking.close) - toMin(booking.open) < Number(booking.slotMinutes)) { showToast(`Your opening hours are shorter than one ${lengthLabel(booking.slotMinutes)} appointment`,'error'); return; }
     setSavingBooking(true);
     try {
       const res = await api.saveBookingSettings({
         enabled: booking.enabled, days: booking.days, open: booking.open, close: booking.close,
         slotMinutes: Number(booking.slotMinutes), capacity: Number(booking.capacity),
         maxDaysAhead: Number(booking.maxDaysAhead), minNoticeHours: Number(booking.minNoticeHours),
+        ...(timezone ? { timezone } : {}),
       });
       setBooking(res.data.settings);
+      // keep the zone the dashboard shows times in in step
+      const st = getStaff();
+      if (st && timezone) localStorage.setItem('shihfu_staff', JSON.stringify({ ...st, timezone }));
+      setGeo(getGeo());
       showToast('Booking settings saved');
     } catch (err) {
       showToast(err.message || 'Could not save booking settings','error');
@@ -76,6 +91,7 @@ function SettingsPageInner() {
   useEffect(() => {
     if (!isLoggedIn()) { router.replace('/login'); return; }
     const s = getStaff();
+    setGeo(getGeo());
     if (s) {
       setStaff(s);
       setProfile(p => ({ ...p, name: s.name || '' }));
@@ -86,6 +102,12 @@ function SettingsPageInner() {
     loadEmailConnection();
     loadBooking();
   }, []);
+
+  // Links such as /dashboard/settings?tab=booking open straight to a tab
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && ['profile', 'email', 'booking', 'password'].includes(t)) setActiveTab(t);
+  }, [searchParams]);
 
   // After Google redirects back from the consent screen
   useEffect(() => {
@@ -141,10 +163,11 @@ function SettingsPageInner() {
   async function handleSaveProfile(e) {
     e.preventDefault();
     if (profile.name.trim().length < 2) { showToast('Please enter your name','error'); return; }
-    if (profile.phone && !/^[6-9]\d{9}$/.test(profile.phone)) { showToast('Enter a valid 10-digit Indian mobile number','error'); return; }
+    const ph = profile.phone ? checkPhone(profile.phone, geo.countryCode) : null;
+    if (ph && !ph.ok) { showToast(ph.error,'error'); return; }
     setSavingProfile(true);
     try {
-      await api.updateMe({ name: profile.name.trim(), ...(profile.phone ? { phone: profile.phone } : {}) });
+      await api.updateMe({ name: profile.name.trim(), ...(ph ? { phone: ph.national } : {}) });
       // keep the name shown in the dashboard in step
       const s = getStaff();
       if (s) localStorage.setItem('shihfu_staff', JSON.stringify({ ...s, name: profile.name.trim() }));
@@ -231,14 +254,22 @@ function SettingsPageInner() {
                 <div>
                   <label style={lbl}>Business Mobile</label>
                   <div style={{ display:'flex' }}>
-                    <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'0.8rem', fontWeight:600, color:'var(--gold)', fontSize:'0.85rem', display:'flex', alignItems:'center' }}>+91</div>
-                    <input style={{ ...inp, borderRadius:'0 4px 4px 0' }} inputMode="numeric" maxLength={10} placeholder="98765 43210"
-                      value={profile.phone} onChange={e=>setProfile(p=>({...p,phone:e.target.value.replace(/\D/g,'').slice(0,10)}))} onFocus={onFocus} onBlur={onBlur}/>
+                    <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'0.8rem', fontWeight:600, color:'var(--gold)', fontSize:'0.85rem', display:'flex', alignItems:'center' }}>+{geo.dialCode}</div>
+                    <input style={{ ...inp, borderRadius:'0 4px 4px 0', minWidth:0 }} inputMode="tel" maxLength={20} placeholder={phonePlaceholder(geo.countryCode)}
+                      value={profile.phone} onChange={e=>setProfile(p=>({...p,phone:e.target.value.replace(/[^\d+()\-.\s]/g,'')}))} onFocus={onFocus} onBlur={onBlur}/>
                   </div>
                 </div>
                 <div>
                   <label style={lbl}>Login Email</label>
                   <input style={{ ...inp, background:'var(--warm)', color:'var(--muted)' }} value={staff?.email || ''} readOnly/>
+                </div>
+                <div>
+                  <label style={lbl}>Country</label>
+                  <input style={{ ...inp, background:'var(--warm)', color:'var(--muted)' }} value={`${geo.countryName} (+${geo.dialCode})`} readOnly/>
+                </div>
+                <div>
+                  <label style={lbl}>Currency</label>
+                  <input style={{ ...inp, background:'var(--warm)', color:'var(--muted)' }} value={geo.currency} readOnly/>
                 </div>
               </div>
             </div>
@@ -295,6 +326,12 @@ function SettingsPageInner() {
                 Bookings appear under Appointments in your dashboard, and Shih-Fu tracks which messages lead to bookings so you can see what works.
               </div>
 
+              {!booking.configured && (
+                <div style={{ background:'rgba(196,83,42,.07)', border:'1px solid rgba(196,83,42,.22)', borderRadius:6, padding:'.85rem 1rem', marginBottom:'1.25rem', fontSize:'.84rem', color:'var(--rust)', lineHeight:1.6 }}>
+                  Your booking hours are not set yet, so no booking link is added to your messages. Choose your hours below and save to switch booking on.
+                </div>
+              )}
+
               <label style={{ display:'flex', alignItems:'center', gap:'0.6rem', fontSize:'0.9rem', fontWeight:600, color:'var(--ink)', marginBottom:'1.5rem', cursor:'pointer' }}>
                 <input type="checkbox" checked={booking.enabled} onChange={e=>setBooking(b=>({...b,enabled:e.target.checked}))} style={{ width:18, height:18, accentColor:'var(--gold)' }}/>
                 Include a booking link in my messages
@@ -303,7 +340,7 @@ function SettingsPageInner() {
               <div style={{ opacity:booking.enabled?1:.5, pointerEvents:booking.enabled?'auto':'none' }}>
                 <label style={lbl}>Days you take appointments</label>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:'1.5rem' }}>
-                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((n,d) => (
+                  {DAY_NAMES.map((n,d) => (
                     <button type="button" key={d} onClick={() => toggleDay(d)}
                       style={{ padding:'0.55rem 1rem', borderRadius:6, cursor:'pointer', fontFamily:'inherit', fontSize:'0.85rem', fontWeight:booking.days.includes(d)?700:500,
                         border:booking.days.includes(d)?'1px solid var(--gold)':'1px solid var(--border)', background:booking.days.includes(d)?'rgba(200,168,75,.14)':'white', color:'var(--ink)' }}>{n}</button>
@@ -319,12 +356,30 @@ function SettingsPageInner() {
                     <label style={lbl}>Closes</label>
                     <input style={inp} type="time" value={booking.close} onChange={e=>setBooking(b=>({...b,close:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
                   </div>
-                  <div>
-                    <label style={lbl}>Appointment length</label>
-                    <select style={{ ...inp, cursor:'pointer' }} value={booking.slotMinutes} onChange={e=>setBooking(b=>({...b,slotMinutes:e.target.value}))}>
-                      {[15,20,30,45,60,90,120].map(m => <option key={m} value={m}>{m} minutes</option>)}
-                    </select>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={lbl}>How long is one appointment?</label>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                      {APPOINTMENT_LENGTHS.map(l => {
+                        const on = Number(booking.slotMinutes) === l.value;
+                        return (
+                          <button type="button" key={l.value} onClick={() => setBooking(b=>({...b,slotMinutes:l.value}))}
+                            style={{ padding:'0.55rem 1rem', borderRadius:6, cursor:'pointer', fontFamily:'inherit', fontSize:'0.85rem', fontWeight:on?700:500,
+                              border:on?'1px solid var(--gold)':'1px solid var(--border)', background:on?'rgba(200,168,75,.14)':'white', color:'var(--ink)' }}>{l.label}</button>
+                        );
+                      })}
+                    </div>
+                    <div style={{ fontSize:'0.78rem', color:'var(--muted)', marginTop:'0.5rem', lineHeight:1.6 }}>
+                      Customers book one slot of this length, for example {clock(toMin(booking.open))} to {clock(toMin(booking.open) + Number(booking.slotMinutes))}.
+                    </div>
                   </div>
+                  {zones.length > 1 && (
+                    <div style={{ gridColumn:'1/-1' }}>
+                      <label style={lbl}>Time zone</label>
+                      <select style={{ ...inp, cursor:'pointer' }} value={timezone} onChange={e=>setTimezone(e.target.value)}>
+                        {zones.map(z => <option key={z} value={z}>{timezoneLabel(z)}</option>)}
+                      </select>
+                    </div>
+                  )}
                   <div>
                     <label style={lbl}>Customers at the same time</label>
                     <input style={inp} type="number" min="1" max="50" value={booking.capacity} onChange={e=>setBooking(b=>({...b,capacity:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
@@ -339,7 +394,7 @@ function SettingsPageInner() {
                   </div>
                 </div>
                 <div style={{ fontSize:'0.78rem', color:'var(--muted)', lineHeight:1.6 }}>
-                  Times are Indian Standard Time. &quot;Customers at the same time&quot; is how many bookings one slot can take, for example the number of chairs, bays or staff you have.
+                  All times are in your time zone ({(timezone || geo.timezone).replace(/_/g, ' ')}). &quot;Customers at the same time&quot; is how many bookings one slot can take, for example the number of chairs, bays or staff you have.
                 </div>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { api } from '../../../lib/api';
 import { getConfig, getQuickFields } from '../../../lib/industry-config';
 import DynamicField, { applyFieldChange } from '../../components/DynamicField';
+import { checkPhone, phonePlaceholder } from '../../../lib/geo';
 
 // Public quick check-in form. No login: a business shows it on an iPad at
 // the counter, or sends the link to someone booking by phone. Add
@@ -59,8 +60,8 @@ export default function CheckinPage() {
     setForm(BLANK); setAsset({}); setChannels([]); setError(''); setDone(null);
   }
 
-  const fields = business ? getQuickFields(business.vertical) : [];
-  const config = business ? getConfig(business.vertical) : null;
+  const fields = business ? getQuickFields(business.vertical, business.countryCode) : [];
+  const config = business ? getConfig(business.vertical, business.countryCode) : null;
 
   function toggleChannel(id) {
     setChannels(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
@@ -70,7 +71,8 @@ export default function CheckinPage() {
     e.preventDefault();
     setError('');
     if (form.name.trim().length < 2) { setError('Please enter your name'); return; }
-    if (!/^[6-9]\d{9}$/.test(form.phone)) { setError('Please enter a valid 10-digit mobile number'); return; }
+    const ph = checkPhone(form.phone, business.countryCode);
+    if (!ph.ok) { setError(ph.error); return; }
     const missing = fields.find(f => f.required && !asset[f.key]?.trim?.());
     if (missing) { setError(`Please fill in: ${missing.label}`); return; }
 
@@ -81,7 +83,7 @@ export default function CheckinPage() {
     try {
       const res = await api.submitPublicCheckin(token, {
         name: form.name.trim(),
-        phone: form.phone,
+        phone: ph.national,
         email: form.email.trim() || undefined,
         city: form.city.trim() || undefined,
         channels,
@@ -152,9 +154,9 @@ export default function CheckinPage() {
         <div>
           <label style={LBL}>Mobile Number *</label>
           <div style={{ display:'flex' }}>
-            <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRight:'none', borderRadius:'6px 0 0 6px', padding:'1rem', fontWeight:600, color:'var(--gold)', display:'flex', alignItems:'center' }}>+91</div>
-            <input style={{ ...INP, borderRadius:'0 6px 6px 0' }} inputMode="numeric" autoComplete="tel-national" maxLength={10} placeholder="98765 43210"
-              value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value.replace(/\D/g,'').slice(0,10)}))} onFocus={onFocus} onBlur={onBlur}/>
+            <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRight:'none', borderRadius:'6px 0 0 6px', padding:'1rem', fontWeight:600, color:'var(--gold)', display:'flex', alignItems:'center' }}>+{business.dialCode}</div>
+            <input style={{ ...INP, borderRadius:'0 6px 6px 0', minWidth:0 }} inputMode="tel" autoComplete="tel-national" maxLength={20} placeholder={phonePlaceholder(business.countryCode)}
+              value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value.replace(/[^\d+()\-.\s]/g,'')}))} onFocus={onFocus} onBlur={onBlur}/>
           </div>
         </div>
 
@@ -166,7 +168,7 @@ export default function CheckinPage() {
           </div>
           <div>
             <label style={LBL}>City (optional)</label>
-            <input style={INP} autoComplete="address-level2" placeholder="e.g. Bengaluru" value={form.city}
+            <input style={INP} autoComplete="address-level2" placeholder="e.g. Austin" value={form.city}
               onChange={e=>setForm(f=>({...f,city:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
           </div>
         </div>

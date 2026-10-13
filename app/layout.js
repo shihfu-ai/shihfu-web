@@ -9,7 +9,7 @@ const dmSans = DM_Sans({
 
 export const metadata = {
   title: 'ShihFu AI',
-  description: 'Retention-first CRM for Indian service businesses. Automate follow-ups for veterinary clinics, salons, and auto repair shops.',
+  description: 'Retention-first CRM for service businesses worldwide. Automate follow-ups and online booking for veterinary clinics, salons, auto repair shops, and more.',
 };
 
 export default function RootLayout({ children }) {

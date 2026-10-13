@@ -9,8 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "countries-and-timezones": "^3.10.0",
+    "country-to-currency": "^3.0.1",
     "js-cookie": "^3.0.5",
     "jsonwebtoken": "^9.0.3",
+    "libphonenumber-js": "^1.13.15",
     "next": "16.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4"

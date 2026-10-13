@@ -54,7 +54,7 @@ export default function LandingPage() {
         <div>
           <div style={{ display:'inline-flex', alignItems:'center', gap:'.6rem', fontSize:'.78rem', fontWeight:500, letterSpacing:'.14em', textTransform:'uppercase', color:'#c8a84b', marginBottom:'1.5rem' }}>
             <span style={{ width:28, height:1, background:'#c8a84b', display:'block' }}></span>
-            Retention-First CRM for India
+            Retention-First CRM for Service Businesses
           </div>
           <h1 style={{ fontFamily:"'Playfair Display',serif", fontSize:'clamp(2.8rem,5vw,5rem)', fontWeight:900, lineHeight:1.05, letterSpacing:'-0.02em', marginBottom:'1.5rem' }}>
             Never lose a<br/>customer to{' '}
@@ -62,7 +62,7 @@ export default function LandingPage() {
             <br/>again.
           </h1>
           <p style={{ fontSize:'1.05rem', lineHeight:1.75, color:'#6b6456', maxWidth:480, marginBottom:'2.5rem', fontWeight:300 }}>
-            Shih-Fu automates follow-ups, service reminders, and re-engagement for any service-based business across India - so fewer customers slip through the cracks.
+            Shih-Fu automates follow-ups, service reminders, and re-engagement for any service-based business, in any country - so fewer customers slip through the cracks.
           </p>
           <div style={{ display:'flex', gap:'1rem', alignItems:'center', flexWrap:'wrap' }}>
             <Link href="/signup" className="btn-primary">Start Free - No Card Needed</Link>
@@ -71,7 +71,7 @@ export default function LandingPage() {
           <div style={{ marginTop:'2rem', fontSize:'.8rem', color:'var(--muted)', display:'flex', gap:'1.5rem', flexWrap:'wrap' }}>
             <span>30-day free trial</span>
             <span>No setup fees</span>
-            <span>Made in India</span>
+            <span>Works in any country</span>
           </div>
         </div>
 
@@ -83,10 +83,10 @@ export default function LandingPage() {
               <span style={{ background:'#ecfdf5', color:'#059669', fontSize:'.72rem', fontWeight:600, padding:'.25rem .7rem', borderRadius:20 }}>Example</span>
             </div>
             {[
-              { initials:'PS', name:'Priya Sharma', meta:'Wellness Clinic - Annual checkup due', tag:'Due Today', tagBg:'#fef3c7', tagColor:'#92400e' },
-              { initials:'RM', name:'Rahul Menon',  meta:'AutoFix Garage - Oil change reminder', tag:'SMS Sent', tagBg:'#ecfdf5', tagColor:'#065f46' },
-              { initials:'SK', name:'Sunita Kumar', meta:'Glam Studio - Colour retouch cycle', tag:'In 3 Days', tagBg:'#eff6ff', tagColor:'#1e40af' },
-              { initials:'VA', name:'Vikram Anand', meta:'QuickServe - Maintenance due', tag:'WhatsApp', tagBg:'#ecfdf5', tagColor:'#065f46' },
+              { initials:'MG', name:'Maria Garcia', meta:'Wellness Clinic - Annual checkup due', tag:'Due Today', tagBg:'#fef3c7', tagColor:'#92400e' },
+              { initials:'JM', name:'James Miller',  meta:'AutoFix Garage - Oil change reminder', tag:'SMS Sent', tagBg:'#ecfdf5', tagColor:'#065f46' },
+              { initials:'AK', name:'Aisha Khan', meta:'Glam Studio - Colour retouch cycle', tag:'In 3 Days', tagBg:'#eff6ff', tagColor:'#1e40af' },
+              { initials:'WZ', name:'Wei Zhang', meta:'QuickServe - Maintenance due', tag:'WhatsApp', tagBg:'#ecfdf5', tagColor:'#065f46' },
             ].map((r, i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', gap:'.9rem', padding:'.75rem', background:'#f0e9d6', borderRadius:8, marginBottom:'.6rem' }}>
                 <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(200,168,75,0.15)', border:'1px solid rgba(200,168,75,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.72rem', fontWeight:700, color:'#c8a84b', flexShrink:0 }}>{r.initials}</div>
@@ -239,7 +239,7 @@ export default function LandingPage() {
           </p>
           <div style={{ display:'flex', flexDirection:'column', gap:'.75rem' }}>
             {[
-              { label:'WhatsApp', sub:'The #1 messaging app in India. 98% open rate.' },
+              { label:'WhatsApp', sub:'The messaging app your customers already use, in most countries.' },
               { label:'SMS',      sub:'Instant delivery. No internet or app required.' },
               { label:'Email',    sub:'Detailed reminders, receipts, and special offers.' },
             ].map((ch, i) => (
@@ -305,7 +305,7 @@ export default function LandingPage() {
           ))}
         </div>
         <div style={{ fontSize:'.75rem', color:'rgba(245,240,232,.25)' }}>
-          2026 Shih-Fu Technologies Pvt. Ltd. Made in India
+          2026 Shih-Fu Technologies Pvt. Ltd.
         </div>
       </footer>
     </div>

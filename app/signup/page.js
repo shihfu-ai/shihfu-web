@@ -1,31 +1,16 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api, saveAuth } from '../../lib/api';
 import { SIGNUP_VERTICALS } from '../../lib/industry-config';
+import {
+  COUNTRIES, countryName, dialCode, detectCountry, timezonesFor, defaultTimezone, timezoneLabel,
+  currencyFor, checkPhone, phonePlaceholder,
+} from '../../lib/geo';
+import { APPOINTMENT_LENGTHS, lengthLabel, DAY_NAMES, toMin, clock } from '../../lib/booking-options';
 
-const STEPS = ['Business Profile', 'Industry', 'Review'];
-
-const LANGUAGES = [
-  { value:'en', label:'English' },
-  { value:'hi', label:'Hindi' },
-  { value:'ta', label:'Tamil' },
-  { value:'te', label:'Telugu' },
-  { value:'kn', label:'Kannada' },
-  { value:'ml', label:'Malayalam' },
-  { value:'mr', label:'Marathi' },
-  { value:'gu', label:'Gujarati' },
-  { value:'bn', label:'Bengali' },
-  { value:'pa', label:'Punjabi' },
-];
-
-const CITIES = [
-  'Bengaluru','Mumbai','Delhi','Hyderabad','Chennai','Pune','Kolkata',
-  'Ahmedabad','Jaipur','Kochi','Chandigarh','Indore','Nagpur','Surat',
-  'Lucknow','Bhopal','Visakhapatnam','Coimbatore','Vadodara','Other',
-];
-
+const STEPS = ['Business Profile', 'Industry', 'Hours', 'Review'];
 
 export default function SignupPage() {
   const router  = useRouter();
@@ -33,14 +18,33 @@ export default function SignupPage() {
   const [error, setError]     = useState('');
   const [emailExists, setEmailExists] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Country names come from the runtime's locale data, which differs a little
+  // between the server and the browser, so the list is only drawn in the browser.
+  const [mounted, setMounted] = useState(false);
 
   const [form, setForm] = useState({
-    businessName:'', ownerName:'', phone:'', email:'',
-    password:'', city:'', vertical:'', healthcareSubType:'',
-    preferredLang:'en',
+    businessName:'', ownerName:'', countryCode:'', phone:'', email:'',
+    password:'', city:'', state:'', timezone:'', vertical:'', healthcareSubType:'',
+  });
+  // Business hours (step 3). `skip` leaves booking unset: no links go out until it is.
+  const [hours, setHours] = useState({
+    days:[1,2,3,4,5,6], open:'10:00', close:'18:00', slotMinutes:30, capacity:1, skip:false,
   });
 
   const update = (field, value) => setForm(f => ({ ...f, [field]: value }));
+
+  // Preselect the visitor's country from their device
+  useEffect(() => {
+    setMounted(true);
+    const guess = detectCountry();
+    if (guess) setForm(f => (f.countryCode ? f : { ...f, countryCode: guess, timezone: defaultTimezone(guess) }));
+  }, []);
+
+  function chooseCountry(code) {
+    setForm(f => ({ ...f, countryCode: code, timezone: code ? defaultTimezone(code) : '' }));
+  }
+
+  const zones = form.countryCode ? timezonesFor(form.countryCode) : [];
 
   // The actual vertical key sent to the API
   function resolvedVertical() {
@@ -51,12 +55,11 @@ export default function SignupPage() {
   function validateStep() {
     setError('');
     if (step === 0) {
-      if (!form.businessName || !form.ownerName || !form.phone || !form.email || !form.password) {
+      if (!form.businessName || !form.ownerName || !form.countryCode || !form.phone || !form.email || !form.password) {
         setError('Please fill in all required fields'); return false;
       }
-      if (!/^[6-9]\d{9}$/.test(form.phone)) {
-        setError('Enter a valid 10-digit Indian mobile number'); return false;
-      }
+      const ph = checkPhone(form.phone, form.countryCode);
+      if (!ph.ok) { setError(ph.error); return false; }
       if (form.password.length < 8) {
         setError('Password must be at least 8 characters'); return false;
       }
@@ -66,6 +69,13 @@ export default function SignupPage() {
       if (form.vertical === 'healthcare' && !form.healthcareSubType) {
         setError('Please select your clinic type (Eye or Dental)'); return false;
       }
+    }
+    if (step === 2 && !hours.skip) {
+      if (hours.days.length === 0) { setError('Choose at least one day you take appointments'); return false; }
+      if (toMin(hours.close) - toMin(hours.open) < hours.slotMinutes) {
+        setError(`Your opening hours are shorter than one ${lengthLabel(hours.slotMinutes)} appointment. Move the closing time later.`); return false;
+      }
+      if (!(hours.capacity >= 1)) { setError('At least one customer must be able to book each time'); return false; }
     }
     return true;
   }
@@ -77,15 +87,22 @@ export default function SignupPage() {
     setEmailExists(false);
     setLoading(true);
     try {
+      const ph = checkPhone(form.phone, form.countryCode);
       const res = await api.register({
         businessName:  form.businessName,
         ownerName:     form.ownerName,
-        phone:         form.phone,
+        countryCode:   form.countryCode,
+        timezone:      form.timezone || undefined,
+        phone:         ph.ok ? ph.national : form.phone,
         email:         form.email,
         password:      form.password,
         city:          form.city || undefined,
+        state:         form.state || undefined,
         vertical:      resolvedVertical(),
-        preferredLang: form.preferredLang,
+        booking:       hours.skip ? undefined : {
+          days: hours.days, open: hours.open, close: hours.close,
+          slotMinutes: Number(hours.slotMinutes), capacity: Number(hours.capacity),
+        },
       });
       saveAuth(res.data.accessToken, res.data.staff);
       router.push('/dashboard');
@@ -112,6 +129,11 @@ export default function SignupPage() {
     backgroundRepeat:'no-repeat', backgroundPosition:'right 1rem center', backgroundSize:12,
     appearance:'none',
   };
+  const chip = (on) => ({
+    padding:'.55rem .95rem', borderRadius:6, cursor:'pointer', fontFamily:'inherit', fontSize:'.85rem',
+    fontWeight:on?700:500, border:on?'1px solid var(--gold)':'1px solid var(--border)',
+    background:on?'rgba(200,168,75,.14)':'white', color:'var(--ink)',
+  });
 
   // Resolved vertical label for the review step
   const selectedVerticalLabel = () => {
@@ -122,6 +144,22 @@ export default function SignupPage() {
     }
     return SIGNUP_VERTICALS.find(v => v.value === form.vertical)?.label || form.vertical;
   };
+
+  // A few example slots so the owner can see what customers will be offered
+  const previewSlots = () => {
+    const out = [];
+    const o = toMin(hours.open), c = toMin(hours.close), len = Number(hours.slotMinutes);
+    for (let t = o; t + len <= c && out.length < 4; t += len) out.push(`${clock(t)} to ${clock(t + len)}`);
+    return out;
+  };
+  const slotCount = () => {
+    const span = toMin(hours.close) - toMin(hours.open);
+    return span > 0 ? Math.floor(span / Number(hours.slotMinutes)) : 0;
+  };
+
+  const hoursSummary = hours.skip
+    ? 'Not set yet (no booking links until you set it)'
+    : `${hours.days.map(d => DAY_NAMES[d]).join(', ')}, ${clock(toMin(hours.open))} to ${clock(toMin(hours.close))}, ${lengthLabel(Number(hours.slotMinutes))} appointments`;
 
   return (
     <div style={{ minHeight:'100vh', background:'var(--cream)', display:'flex', flexDirection:'column' }}>
@@ -137,7 +175,7 @@ export default function SignupPage() {
       </nav>
 
       <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'3rem 1.5rem' }}>
-        <div style={{ width:'100%', maxWidth:540 }}>
+        <div style={{ width:'100%', maxWidth:560 }}>
 
           {/* Heading */}
           <div style={{ textAlign:'center', marginBottom:'2rem' }}>
@@ -188,38 +226,60 @@ export default function SignupPage() {
                   <input style={inp} placeholder="e.g. Dr. Priya Sharma"
                     value={form.ownerName} onChange={e=>update('ownerName',e.target.value)}/>
                 </div>
+                <div>
+                  <label style={lbl}>Country *</label>
+                  <select style={sel} value={form.countryCode} onChange={e=>chooseCountry(e.target.value)}>
+                    <option value="">Select your country</option>
+                    {mounted && COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name} (+{c.dial})</option>)}
+                  </select>
+                  <div style={{ fontSize:'.74rem', color:'var(--muted)', marginTop:'.4rem', lineHeight:1.5 }}>
+                    This sets your phone number format, time zone, currency and units. It cannot be changed later.
+                  </div>
+                </div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
                   <div>
                     <label style={lbl}>Mobile *</label>
                     <div style={{ display:'flex' }}>
-                      <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'.8rem .85rem', fontSize:'.8rem', fontWeight:600, color:'var(--gold)', whiteSpace:'nowrap', display:'flex', alignItems:'center' }}>+91</div>
-                      <input style={{ ...inp, borderRadius:'0 4px 4px 0' }} placeholder="98765 43210" maxLength={10}
-                        value={form.phone} onChange={e=>update('phone',e.target.value.replace(/\D/g,'').slice(0,10))}/>
+                      <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'.8rem .85rem', fontSize:'.8rem', fontWeight:600, color:'var(--gold)', whiteSpace:'nowrap', display:'flex', alignItems:'center' }}>
+                        {form.countryCode ? `+${dialCode(form.countryCode)}` : '+'}
+                      </div>
+                      <input style={{ ...inp, borderRadius:'0 4px 4px 0', minWidth:0 }} inputMode="tel" maxLength={20}
+                        placeholder={form.countryCode ? phonePlaceholder(form.countryCode) : 'Choose country first'}
+                        value={form.phone} onChange={e=>update('phone',e.target.value.replace(/[^\d+()\-.\s]/g,''))}/>
                     </div>
                   </div>
                   <div>
                     <label style={lbl}>City</label>
-                    <select style={sel} value={form.city} onChange={e=>update('city',e.target.value)}>
-                      <option value="">Select city</option>
-                      {CITIES.map(c=><option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <input style={inp} placeholder="e.g. Austin" value={form.city} onChange={e=>update('city',e.target.value)}/>
                   </div>
                 </div>
                 <div>
+                  <label style={lbl}>State / Region</label>
+                  <input style={inp} placeholder="Optional" value={form.state} onChange={e=>update('state',e.target.value)}/>
+                </div>
+                {zones.length > 1 && (
+                  <div>
+                    <label style={lbl}>Time Zone *</label>
+                    <select style={sel} value={form.timezone} onChange={e=>update('timezone',e.target.value)}>
+                      {zones.map(z => <option key={z} value={z}>{timezoneLabel(z)}</option>)}
+                    </select>
+                    <div style={{ fontSize:'.74rem', color:'var(--muted)', marginTop:'.4rem', lineHeight:1.5 }}>
+                      Booking times and reminders follow this zone. Pick the one where your business is.
+                    </div>
+                  </div>
+                )}
+                {zones.length === 1 && (
+                  <div style={{ fontSize:'.78rem', color:'var(--muted)' }}>Time zone: {timezoneLabel(zones[0])}</div>
+                )}
+                <div>
                   <label style={lbl}>Business Email *</label>
-                  <input style={inp} type="email" placeholder="hello@yourbusiness.in"
+                  <input style={inp} type="email" placeholder="hello@yourbusiness.com"
                     value={form.email} onChange={e=>update('email',e.target.value)}/>
                 </div>
                 <div>
                   <label style={lbl}>Password *</label>
                   <input style={inp} type="password" placeholder="Minimum 8 characters"
                     value={form.password} onChange={e=>update('password',e.target.value)}/>
-                </div>
-                <div>
-                  <label style={lbl}>Preferred Message Language</label>
-                  <select style={sel} value={form.preferredLang} onChange={e=>update('preferredLang',e.target.value)}>
-                    {LANGUAGES.map(l=><option key={l.value} value={l.value}>{l.label}</option>)}
-                  </select>
                 </div>
               </div>
             )}
@@ -262,22 +322,80 @@ export default function SignupPage() {
               </div>
             )}
 
-            {/* ── STEP 2: Review ── */}
+            {/* ── STEP 2: Business hours and appointment length ── */}
             {step === 2 && (
+              <div>
+                <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.25rem', fontWeight:700, marginBottom:'.4rem' }}>When can customers book?</h2>
+                <p style={{ fontSize:'.85rem', color:'var(--muted)', fontWeight:300, marginBottom:'1.25rem', lineHeight:1.6 }}>
+                  Every reminder and promotion you send includes a link where customers pick a time and book. They can only choose from the hours and appointment length you set here. You can change this any time in Settings.
+                </p>
+
+                <div style={{ opacity:hours.skip?.45:1, pointerEvents:hours.skip?'none':'auto' }}>
+                  <label style={lbl}>Days you take appointments</label>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:'1.25rem' }}>
+                    {DAY_NAMES.map((n, d) => (
+                      <button type="button" key={d} style={chip(hours.days.includes(d))}
+                        onClick={() => setHours(h => ({ ...h, days: h.days.includes(d) ? h.days.filter(x => x !== d) : [...h.days, d].sort() }))}>{n}</button>
+                    ))}
+                  </div>
+
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginBottom:'1.25rem' }}>
+                    <div>
+                      <label style={lbl}>Opens</label>
+                      <input style={inp} type="time" value={hours.open} onChange={e=>setHours(h=>({...h,open:e.target.value}))}/>
+                    </div>
+                    <div>
+                      <label style={lbl}>Closes</label>
+                      <input style={inp} type="time" value={hours.close} onChange={e=>setHours(h=>({...h,close:e.target.value}))}/>
+                    </div>
+                  </div>
+
+                  <label style={lbl}>How long is one appointment?</label>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:'1.25rem' }}>
+                    {APPOINTMENT_LENGTHS.map(l => (
+                      <button type="button" key={l.value} style={chip(Number(hours.slotMinutes) === l.value)}
+                        onClick={() => setHours(h => ({ ...h, slotMinutes: l.value }))}>{l.label}</button>
+                    ))}
+                  </div>
+
+                  <div style={{ maxWidth:260, marginBottom:'1.25rem' }}>
+                    <label style={lbl}>Customers at the same time</label>
+                    <input style={inp} type="number" min="1" max="50" value={hours.capacity} onChange={e=>setHours(h=>({...h,capacity:e.target.value}))}/>
+                    <div style={{ fontSize:'.74rem', color:'var(--muted)', marginTop:'.35rem', lineHeight:1.5 }}>How many bookings one time slot can take, for example the number of chairs, bays or staff.</div>
+                  </div>
+
+                  <div style={{ background:'rgba(200,168,75,.08)', border:'1px solid rgba(200,168,75,.2)', borderRadius:6, padding:'.85rem 1rem', fontSize:'.8rem', color:'var(--muted)', lineHeight:1.7 }}>
+                    <strong style={{ color:'var(--ink)' }}>What customers will see:</strong> {slotCount()} {lengthLabel(Number(hours.slotMinutes))} appointments per open day
+                    {previewSlots().length > 0 && <>, such as {previewSlots().join(', ')}.</>}
+                  </div>
+                </div>
+
+                <label style={{ display:'flex', alignItems:'center', gap:'.6rem', marginTop:'1.25rem', fontSize:'.82rem', color:'var(--muted)', cursor:'pointer' }}>
+                  <input type="checkbox" checked={hours.skip} onChange={e=>setHours(h=>({...h,skip:e.target.checked}))} style={{ width:16, height:16, accentColor:'var(--gold)' }}/>
+                  Skip for now. No booking links will be added to my messages until I set my hours in Settings.
+                </label>
+              </div>
+            )}
+
+            {/* ── STEP 3: Review ── */}
+            {step === 3 && (
               <div>
                 <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.25rem', fontWeight:700, marginBottom:'1.25rem' }}>Review and Launch</h2>
                 {[
                   { label:'Business Name', value:form.businessName },
                   { label:'Owner',         value:form.ownerName },
-                  { label:'Mobile',        value:`+91 ${form.phone}` },
+                  { label:'Country',       value:countryName(form.countryCode) },
+                  { label:'Mobile',        value:`+${dialCode(form.countryCode)} ${form.phone}` },
                   { label:'Email',         value:form.email },
-                  { label:'City',          value:form.city || 'Not specified' },
+                  { label:'City',          value:[form.city, form.state].filter(Boolean).join(', ') || 'Not specified' },
+                  { label:'Time Zone',     value:timezoneLabel(form.timezone || defaultTimezone(form.countryCode)) },
+                  { label:'Currency',      value:currencyFor(form.countryCode) },
                   { label:'Industry',      value:selectedVerticalLabel() },
-                  { label:'Language',      value:LANGUAGES.find(l=>l.value===form.preferredLang)?.label },
+                  { label:'Booking Hours', value:hoursSummary },
                 ].map((r,i) => (
-                  <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'.7rem 0', borderBottom:'1px solid var(--border)' }}>
-                    <span style={{ fontSize:'.72rem', fontWeight:500, letterSpacing:'.08em', textTransform:'uppercase', color:'var(--muted)' }}>{r.label}</span>
-                    <span style={{ fontSize:'.875rem', color:'var(--ink)', fontWeight:500 }}>{r.value}</span>
+                  <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'1rem', padding:'.7rem 0', borderBottom:'1px solid var(--border)' }}>
+                    <span style={{ fontSize:'.72rem', fontWeight:500, letterSpacing:'.08em', textTransform:'uppercase', color:'var(--muted)', flexShrink:0 }}>{r.label}</span>
+                    <span style={{ fontSize:'.875rem', color:'var(--ink)', fontWeight:500, textAlign:'right' }}>{r.value}</span>
                   </div>
                 ))}
                 <div style={{ marginTop:'1.25rem', background:'rgba(200,168,75,.08)', border:'1px solid rgba(200,168,75,.2)', borderRadius:6, padding:'.85rem 1rem', fontSize:'.78rem', color:'var(--muted)', lineHeight:1.65 }}>
@@ -289,7 +407,7 @@ export default function SignupPage() {
             {/* Navigation */}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'2rem', gap:'1rem' }}>
               {step > 0
-                ? <button onClick={() => setStep(s=>s-1)} className="sf-btn-ghost">Back</button>
+                ? <button onClick={() => { setError(''); setStep(s=>s-1); }} className="sf-btn-ghost">Back</button>
                 : <Link href="/login" style={{ fontSize:'.82rem', color:'var(--muted)', textDecoration:'none' }}>Already have an account?</Link>
               }
               {step < STEPS.length - 1

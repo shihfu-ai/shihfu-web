@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api, getStaff, clearAuth, isLoggedIn } from '../../lib/api';
 import { getConfig, getServiceTypes, getVerticalLabel } from '../../lib/industry-config';
 import DynamicField, { applyFieldChange } from '../components/DynamicField';
+import { getGeo, fmtMoney, fmtDate, fmtTime, formatPhone, checkPhone, phonePlaceholder, zonedInputToISO, todayIn } from '../../lib/geo';
 
 // ─── Blank state factories ─────────────────────────────────────────
 // Built dynamically from the config so they always match the field list.
@@ -50,7 +51,7 @@ function CustomerFormFields({
   channels, setChannels,
   asset, setAsset,
   retention, setRetention,
-  config,
+  config, geo,
 }) {
   function toggleCh(ch) {
     setChannels(prev => prev.includes(ch) ? prev.filter(c=>c!==ch) : [...prev, ch]);
@@ -71,30 +72,30 @@ function CustomerFormFields({
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
         <div style={{ gridColumn:'1/-1' }}>
           <label style={LBL}>Full Name *</label>
-          <input style={INP} placeholder="e.g. Rahul Sharma" required
+          <input style={INP} placeholder="e.g. Alex Morgan" required
             value={customer.name} onChange={e => setCustomer(c=>({...c,name:e.target.value}))}/>
         </div>
         <div>
-          <label style={LBL}>Mobile (10 digits) *</label>
+          <label style={LBL}>Mobile *</label>
           <div style={{ display:'flex' }}>
-            <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'.75rem .8rem', fontSize:'.82rem', fontWeight:600, color:'var(--gold)', whiteSpace:'nowrap', display:'flex', alignItems:'center' }}>+91</div>
-            <input style={{ ...INP, borderRadius:'0 4px 4px 0' }} placeholder="98765 43210" maxLength={10}
-              value={customer.phone} onChange={e => setCustomer(c=>({...c,phone:e.target.value.replace(/\D/g,'').slice(0,10)}))}/>
+            <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'.75rem .8rem', fontSize:'.82rem', fontWeight:600, color:'var(--gold)', whiteSpace:'nowrap', display:'flex', alignItems:'center' }}>+{geo.dialCode}</div>
+            <input style={{ ...INP, borderRadius:'0 4px 4px 0', minWidth:0 }} inputMode="tel" placeholder={phonePlaceholder(geo.countryCode)} maxLength={20}
+              value={customer.phone} onChange={e => setCustomer(c=>({...c,phone:e.target.value.replace(/[^\d+()\-.\s]/g,'')}))}/>
           </div>
         </div>
         <div>
           <label style={LBL}>City</label>
-          <input style={INP} placeholder="e.g. Bengaluru"
+          <input style={INP} placeholder="e.g. Austin"
             value={customer.city} onChange={e => setCustomer(c=>({...c,city:e.target.value}))}/>
         </div>
         <div style={{ gridColumn:'1/-1' }}>
           <label style={LBL}>Email</label>
-          <input style={INP} type="email" placeholder="rahul@example.com"
+          <input style={INP} type="email" placeholder="name@example.com"
             value={customer.email} onChange={e => setCustomer(c=>({...c,email:e.target.value}))}/>
         </div>
         <div style={{ gridColumn:'1/-1' }}>
           <label style={LBL}>Address / Area</label>
-          <input style={INP} placeholder="e.g. 12 MG Road, Indiranagar, Bengaluru 560038"
+          <input style={INP} placeholder="e.g. 12 Main Street, Springfield"
             value={customer.address||''} onChange={e => setCustomer(c=>({...c,address:e.target.value}))}/>
         </div>
       </div>
@@ -298,7 +299,9 @@ export default function DashboardPage() {
   const [showCampaign, setShowCampaign]     = useState(false);
   const [channelStatus, setChannelStatus]   = useState(null);
   const [campaignSaving, setCampaignSaving] = useState(false);
-  const todayStr = new Date().toISOString().split('T')[0];
+  const [geo, setGeo] = useState(getGeo());
+  const [bookingConfigured, setBookingConfigured] = useState(null);   // null until known
+  const todayStr = todayIn(geo.timezone);
   const [campaignForm, setCampaignForm] = useState({
     label:'', messageBody:'', channels:['whatsapp'],
     when:'now', scheduledDate: todayStr, scheduledTime:'10:00',
@@ -308,7 +311,7 @@ export default function DashboardPage() {
   const [showLog, setShowLog]     = useState(false);
   const [logSaving, setLogSaving] = useState(false);
   const [serviceForm, setServiceForm] = useState({
-    customerId:'', serviceType:'', eventDate:new Date().toISOString().split('T')[0],
+    customerId:'', serviceType:'', eventDate:todayIn(geo.timezone),
     staffName:'', amountCharged:'', paymentMethod:'', followUpDays:'', notes:'',
     serviceNotes:{},
   });
@@ -319,7 +322,11 @@ export default function DashboardPage() {
     setStaff(s);
     const v = s?.vertical || '';
     setVertical(v);
-    const cfg = getConfig(v);
+    const g = getGeo();
+    setGeo(g);
+    setCampaignForm(cf => ({ ...cf, scheduledDate: todayIn(g.timezone) }));
+    setServiceForm(sf => ({ ...sf, eventDate: todayIn(g.timezone) }));
+    const cfg = getConfig(v, g.countryCode);
     setConfig(cfg);
     setAddAsset(buildBlankAsset(cfg));
     setAddRetention(buildBlankRetention(cfg));
@@ -336,6 +343,10 @@ export default function DashboardPage() {
 
   useEffect(() => { if (!loading) loadFollowups(fuDays); }, [fuDays, loading]);
   useEffect(() => { if (!loading) refreshApptSummary(); }, [loading]);
+  useEffect(() => {
+    if (loading) return;
+    api.getBookingSettings().then(r => setBookingConfigured(!!r.data.settings.configured)).catch(() => {});
+  }, [loading]);
   useEffect(() => { if (!loading && activePanel === 'appointments') loadAppointments(apptRange); }, [activePanel, apptRange, loading]);
 
   // The list endpoints return at most 100 rows per page; a business can have
@@ -399,7 +410,7 @@ export default function DashboardPage() {
     try {
       await api.createAppointment({
         customerId: apptForm.customerId,
-        startAt: new Date(apptForm.startAt).toISOString(),
+        startAt: zonedInputToISO(apptForm.startAt, geo.timezone),
         durationMin: Number(apptForm.durationMin) || 30,
         serviceType: apptForm.serviceType.trim() || undefined,
         notes: apptForm.notes.trim() || undefined,
@@ -431,7 +442,8 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!addCustomer.name?.trim()) { showToast('Customer name is required','error'); return; }
     if (!addCustomer.phone?.trim()) { showToast('Phone number is required','error'); return; }
-    if (!/^[6-9]\d{9}$/.test(addCustomer.phone)) { showToast('Enter a valid 10-digit Indian mobile number','error'); return; }
+    const addPhone = checkPhone(addCustomer.phone, geo.countryCode);
+    if (!addPhone.ok) { showToast(addPhone.error,'error'); return; }
     if (addChannels.length === 0) { showToast('Select at least one messaging channel','error'); return; }
 
     setAddSaving(true);
@@ -440,7 +452,7 @@ export default function DashboardPage() {
       const entityName = addAsset.entityName || addAsset.petName || '';
       const payload = {
         name:             addCustomer.name.trim(),
-        phone:            addCustomer.phone.trim(),
+        phone:            addPhone.national,
         email:            addCustomer.email?.trim() || undefined,
         city:             addCustomer.city?.trim()  || undefined,
         address:          addCustomer.address?.trim() || undefined,
@@ -498,7 +510,8 @@ export default function DashboardPage() {
   async function handleEdit(e) {
     e.preventDefault();
     if (!editCustomer.name?.trim()) { showToast('Customer name is required','error'); return; }
-    if (!/^[6-9]\d{9}$/.test(editCustomer.phone)) { showToast('Enter a valid 10-digit Indian mobile number','error'); return; }
+    const editPhone = checkPhone(editCustomer.phone, geo.countryCode);
+    if (!editPhone.ok) { showToast(editPhone.error,'error'); return; }
     if (editChannels.length === 0)  { showToast('Select at least one messaging channel','error'); return; }
 
     setEditSaving(true);
@@ -506,7 +519,7 @@ export default function DashboardPage() {
       const entityName = editAsset.entityName || editAsset.petName || '';
       await api.updateCustomer(editingId, {
         name:             editCustomer.name.trim(),
-        phone:            editCustomer.phone.trim(),
+        phone:            editPhone.national,
         email:            editCustomer.email?.trim()   || undefined,
         city:             editCustomer.city?.trim()    || undefined,
         address:          editCustomer.address?.trim() || undefined,
@@ -571,7 +584,9 @@ export default function DashboardPage() {
 
   const checkinLink = checkinToken ? `${window.location.origin}/checkin/${checkinToken}` : '';
   const checkinMessage = `Hi! Please fill in this quick form before your visit to ${staff?.businessName || 'us'}: ${checkinLink}`;
-  const checkinPhoneOk = /^[6-9]\d{9}$/.test(checkinPhone);
+  const checkinPhoneCheck = checkPhone(checkinPhone, geo.countryCode);
+  const checkinPhoneOk = checkinPhoneCheck.ok;
+  const checkinDial = `${geo.dialCode}${checkinPhoneCheck.national || ''}`;
 
   async function copyCheckinLink() {
     try { await navigator.clipboard.writeText(checkinLink); showToast('Link copied'); }
@@ -610,13 +625,13 @@ export default function DashboardPage() {
 
   async function handleSendCampaign(e) {
     e.preventDefault();
-    if (!campaignForm.label.trim())       { showToast('Give this campaign a name, e.g. "Diwali Greetings"','error'); return; }
+    if (!campaignForm.label.trim())       { showToast('Give this campaign a name, e.g. "Holiday Greetings"','error'); return; }
     if (!campaignForm.messageBody.trim()) { showToast('Write the message to send','error'); return; }
     if (campaignForm.channels.length === 0) { showToast('Select at least one channel','error'); return; }
 
     const scheduledAt = campaignForm.when === 'now'
       ? new Date().toISOString()
-      : new Date(`${campaignForm.scheduledDate}T${campaignForm.scheduledTime}`).toISOString();
+      : zonedInputToISO(`${campaignForm.scheduledDate}T${campaignForm.scheduledTime}`, geo.timezone);
 
     if (campaignForm.when === 'later' && new Date(scheduledAt) <= new Date()) {
       showToast('Pick a date and time in the future','error'); return;
@@ -666,7 +681,7 @@ export default function DashboardPage() {
       });
       showToast('Service logged and reminder scheduled');
       setShowLog(false);
-      setServiceForm({ customerId:'', serviceType:'', eventDate:new Date().toISOString().split('T')[0], staffName:'', amountCharged:'', paymentMethod:'', followUpDays:'', notes:'', serviceNotes:{} });
+      setServiceForm({ customerId:'', serviceType:'', eventDate:todayIn(geo.timezone), staffName:'', amountCharged:'', paymentMethod:'', followUpDays:'', notes:'', serviceNotes:{} });
       await loadData();
     } catch (err) {
       showToast(err.message || 'Failed to log service','error');
@@ -826,6 +841,15 @@ export default function DashboardPage() {
         {/* Content */}
         <div style={{ flex:1, overflowY:'auto', padding:'1.5rem' }}>
 
+          {bookingConfigured === false && (
+            <div style={{ background:'rgba(200,168,75,.1)', border:'1px solid rgba(200,168,75,.35)', borderRadius:8, padding:'.9rem 1.15rem', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem', flexWrap:'wrap' }}>
+              <div style={{ fontSize:'.85rem', color:'var(--ink)', lineHeight:1.6 }}>
+                <strong>Set your business hours.</strong> Your messages do not include a booking link yet. Choose your open days, hours and appointment length so customers can book in one tap.
+              </div>
+              <Link href="/dashboard/settings?tab=booking" className="sf-btn-primary" style={{ padding:'.55rem 1.2rem', fontSize:'.8rem', textDecoration:'none', whiteSpace:'nowrap' }}>Set booking hours</Link>
+            </div>
+          )}
+
           {/* OVERVIEW */}
           {activePanel === 'overview' && (
             <div>
@@ -872,10 +896,10 @@ export default function DashboardPage() {
                           <span onClick={() => openProfile(c)} style={{ color:'var(--gold)', cursor:'pointer', textDecoration:'underline', textDecorationColor:'rgba(200,168,75,.35)', textUnderlineOffset:3 }}>{c.name}</span>
                             {c.tags?.includes('checkin') && <span title="Added through the quick check-in form. Open Edit to add the remaining details." style={{ marginLeft:8, fontSize:'.6rem', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'#4a7c59', background:'rgba(74,124,89,.1)', border:'1px solid rgba(74,124,89,.25)', borderRadius:10, padding:'1px 7px' }}>Check-in</span>}
                         </td>
-                        <td style={{ padding:'.85rem 1rem', fontSize:'.8rem', color:'var(--muted)' }}>+91 {c.phone}</td>
+                        <td style={{ padding:'.85rem 1rem', fontSize:'.8rem', color:'var(--muted)', whiteSpace:'nowrap' }}>{formatPhone(c.phone, geo.countryCode)}</td>
                         <td style={{ padding:'.85rem 1rem' }}><span className={pill(c.status)}>{c.status}</span></td>
                         <td style={{ padding:'.85rem 1rem' }}><span className={pill(c.preferred_channel)}>{c.preferred_channel}</span></td>
-                        <td style={{ padding:'.85rem 1rem', fontSize:'.78rem', color:'var(--muted)' }}>{c.last_visit_at ? new Date(c.last_visit_at).toLocaleDateString('en-IN') : 'Not yet'}</td>
+                        <td style={{ padding:'.85rem 1rem', fontSize:'.78rem', color:'var(--muted)' }}>{c.last_visit_at ? fmtDate(c.last_visit_at, geo) : 'Not yet'}</td>
                       </tr>
                     ))}
                     {customers.length===0 && <tr><td colSpan={5} style={{ padding:'3rem', textAlign:'center', color:'var(--muted)', fontSize:'.875rem' }}>No customers yet. Add your first customer to get started.</td></tr>}
@@ -916,7 +940,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         <div style={{ fontSize:'.75rem', color:'var(--muted)', flexShrink:0, textAlign:'right' }}>
-                          {new Date(c.scheduled_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
+                          {fmtDate(c.scheduled_at, geo)}
                           <div style={{ marginTop:4 }}>
                             <span className={pill(c.status==='sent'?'active':c.status==='cancelled'||c.status==='failed'?'dormant':'overdue')} style={{ fontSize:'.62rem' }}>{c.status}</span>
                           </div>
@@ -951,10 +975,10 @@ export default function DashboardPage() {
                             <span onClick={() => openProfile(c)} style={{ color:'var(--gold)', cursor:'pointer', textDecoration:'underline', textDecorationColor:'rgba(200,168,75,.35)', textUnderlineOffset:3 }}>{c.name}</span>
                             {c.tags?.includes('checkin') && <span title="Added through the quick check-in form. Open Edit to add the remaining details." style={{ marginLeft:8, fontSize:'.6rem', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'#4a7c59', background:'rgba(74,124,89,.1)', border:'1px solid rgba(74,124,89,.25)', borderRadius:10, padding:'1px 7px' }}>Check-in</span>}
                           </td>
-                          <td style={{ padding:'.85rem 1rem', fontSize:'.78rem', color:'var(--muted)' }}>+91 {c.phone}</td>
+                          <td style={{ padding:'.85rem 1rem', fontSize:'.78rem', color:'var(--muted)', whiteSpace:'nowrap' }}>{formatPhone(c.phone, geo.countryCode)}</td>
                           <td style={{ padding:'.85rem 1rem', fontSize:'.8rem', color:'var(--muted)' }}>{c.entity_name ? `${c.entity_name}${c.breed_or_model?' · '+c.breed_or_model:''}` : 'Not added'}</td>
-                          <td style={{ padding:'.85rem 1rem', fontSize:'.75rem', color:'var(--muted)', whiteSpace:'nowrap' }}>{c.last_visit_at ? new Date(c.last_visit_at).toLocaleDateString('en-IN') : 'Not yet'}</td>
-                          <td style={{ padding:'.85rem 1rem', fontSize:'.75rem', whiteSpace:'nowrap', color:c.status==='overdue'?'var(--rust)':'#4a7c59' }}>{c.next_reminder_at ? new Date(c.next_reminder_at).toLocaleDateString('en-IN') : 'Not set'}</td>
+                          <td style={{ padding:'.85rem 1rem', fontSize:'.75rem', color:'var(--muted)', whiteSpace:'nowrap' }}>{c.last_visit_at ? fmtDate(c.last_visit_at, geo) : 'Not yet'}</td>
+                          <td style={{ padding:'.85rem 1rem', fontSize:'.75rem', whiteSpace:'nowrap', color:c.status==='overdue'?'var(--rust)':'#4a7c59' }}>{c.next_reminder_at ? fmtDate(c.next_reminder_at, geo) : 'Not set'}</td>
                           <td style={{ padding:'.85rem 1rem' }}><span className={pill(c.status)}>{c.status}</span></td>
                           <td style={{ padding:'.85rem 1rem' }}><span className={pill(c.preferred_channel)}>{c.preferred_channel}</span></td>
                           <td style={{ padding:'.85rem 1rem', whiteSpace:'nowrap' }}>
@@ -997,8 +1021,8 @@ export default function DashboardPage() {
                       <tr key={e.id} style={{ borderBottom:'1px solid var(--border)' }}>
                         <td style={{ padding:'.85rem 1rem', fontSize:'.875rem', fontWeight:600, color:'var(--ink)' }}>{e.customer_name}</td>
                         <td style={{ padding:'.85rem 1rem', fontSize:'.875rem', color:'var(--muted)' }}>{e.service_type}</td>
-                        <td style={{ padding:'.85rem 1rem', fontSize:'.78rem', color:'var(--muted)' }}>{new Date(e.event_date).toLocaleDateString('en-IN')}</td>
-                        <td style={{ padding:'.85rem 1rem', fontSize:'.82rem', fontWeight:600, color:'var(--gold)' }}>{e.amount_charged ? `Rs. ${e.amount_charged}` : 'Not recorded'}</td>
+                        <td style={{ padding:'.85rem 1rem', fontSize:'.78rem', color:'var(--muted)' }}>{fmtDate(String(e.event_date).slice(0, 10), geo)}</td>
+                        <td style={{ padding:'.85rem 1rem', fontSize:'.82rem', fontWeight:600, color:'var(--gold)' }}>{e.amount_charged ? fmtMoney(e.amount_charged, geo) : 'Not recorded'}</td>
                         <td style={{ padding:'.85rem 1rem', fontSize:'.82rem', color:'var(--muted)' }}>{e.logged_by_name || 'Not recorded'}</td>
                         <td style={{ padding:'.85rem 1rem' }}><span className={pill(e.status==='completed'?'active':'dormant')}>{e.status}</span></td>
                       </tr>
@@ -1037,12 +1061,12 @@ export default function DashboardPage() {
                 {appts.map(a => (
                   <div key={a.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', flexWrap:'wrap' }}>
                     <div style={{ width:150, flexShrink:0 }}>
-                      <div style={{ fontSize:'.875rem', fontWeight:600, color:'var(--ink)' }}>{new Date(a.start_at).toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', timeZone:'Asia/Kolkata' })}</div>
-                      <div style={{ fontSize:'.78rem', color:'var(--muted)', marginTop:2 }}>{new Date(a.start_at).toLocaleTimeString('en-IN', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'Asia/Kolkata' })} for {a.duration_min} min</div>
+                      <div style={{ fontSize:'.875rem', fontWeight:600, color:'var(--ink)' }}>{fmtDate(a.start_at, geo, { weekday:'short', day:'numeric', month:'short' })}</div>
+                      <div style={{ fontSize:'.78rem', color:'var(--muted)', marginTop:2 }}>{fmtTime(a.start_at, geo)} for {a.duration_min} min</div>
                     </div>
                     <div style={{ flex:1, minWidth:160 }}>
                       <span onClick={() => openProfile({ id:a.customer_id })} style={{ fontSize:'.875rem', fontWeight:600, color:'var(--gold)', cursor:'pointer', textDecoration:'underline', textDecorationColor:'rgba(200,168,75,.35)', textUnderlineOffset:3 }}>{a.customer_name}</span>
-                      <div style={{ fontSize:'.78rem', color:'var(--muted)', marginTop:2 }}>{a.entity_name ? `${a.entity_name} / ` : ''}{a.service_type || 'No service noted'} / +91 {a.customer_phone}</div>
+                      <div style={{ fontSize:'.78rem', color:'var(--muted)', marginTop:2 }}>{a.entity_name ? `${a.entity_name} / ` : ''}{a.service_type || 'No service noted'} / {formatPhone(a.customer_phone, geo.countryCode)}</div>
                       {a.notes && <div style={{ fontSize:'.76rem', color:'var(--muted)', marginTop:2, fontStyle:'italic' }}>Note: {a.notes}</div>}
                     </div>
                     <div style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'flex-start', flexShrink:0 }}>
@@ -1138,7 +1162,7 @@ export default function DashboardPage() {
                 channels={addChannels}   setChannels={setAddChannels}
                 asset={addAsset}         setAsset={setAddAsset}
                 retention={addRetention} setRetention={setAddRetention}
-                config={config}
+                config={config} geo={geo}
               />
               <div style={{ display:'flex', gap:8, marginTop:'.5rem' }}>
                 <button type="button" className="sf-btn-ghost" style={{ flex:1, padding:'.8rem' }} onClick={() => { setShowAdd(false); resetAdd(); }}>Cancel</button>
@@ -1168,7 +1192,7 @@ export default function DashboardPage() {
                 channels={editChannels}   setChannels={setEditChannels}
                 asset={editAsset}         setAsset={setEditAsset}
                 retention={editRetention} setRetention={setEditRetention}
-                config={config}
+                config={config} geo={geo}
               />
               <div style={{ display:'flex', gap:8, marginTop:'.5rem' }}>
                 <button type="button" className="sf-btn-ghost" style={{ flex:1, padding:'.8rem' }} onClick={() => setShowEdit(false)}>Cancel</button>
@@ -1214,7 +1238,7 @@ export default function DashboardPage() {
                   <>
                     {/* Core info */}
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.75rem 1.5rem', marginBottom:'1.25rem' }}>
-                      <div><span style={LBL}>Phone</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>+91 {viewingCustomer.phone}</div></div>
+                      <div><span style={LBL}>Phone</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{formatPhone(viewingCustomer.phone, geo.countryCode)}</div></div>
                       <div><span style={LBL}>Email</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.email || '-'}</div></div>
                       <div><span style={LBL}>City</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.city || '-'}</div></div>
                       <div><span style={LBL}>Address</span><div style={{ fontSize:'.875rem', color:'var(--ink)' }}>{viewingCustomer.address || '-'}</div></div>
@@ -1267,8 +1291,8 @@ export default function DashboardPage() {
                               {viewingCustomer.serviceEvents.map(se => (
                                 <tr key={se.id} style={{ borderTop:'1px solid var(--border)' }}>
                                   <td style={{ padding:'.6rem .85rem', fontSize:'.82rem', color:'var(--ink)' }}>{se.service_type}</td>
-                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{new Date(se.event_date).toLocaleDateString('en-IN')}</td>
-                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{se.amount_charged ? `Rs. ${se.amount_charged}` : '-'}</td>
+                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{fmtDate(String(se.event_date).slice(0, 10), geo)}</td>
+                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{se.amount_charged ? fmtMoney(se.amount_charged, geo) : '-'}</td>
                                   <td style={{ padding:'.6rem .85rem' }}><span className={pill(se.status==='completed'?'active':'dormant')}>{se.status}</span></td>
                                 </tr>
                               ))}
@@ -1293,7 +1317,7 @@ export default function DashboardPage() {
                               {viewingCustomer.reminders.map(r => (
                                 <tr key={r.id} style={{ borderTop:'1px solid var(--border)' }}>
                                   <td style={{ padding:'.6rem .85rem', fontSize:'.82rem', color:'var(--ink)' }}>{r.reminder_type}</td>
-                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{new Date(r.scheduled_at).toLocaleDateString('en-IN')}</td>
+                                  <td style={{ padding:'.6rem .85rem', fontSize:'.78rem', color:'var(--muted)' }}>{fmtDate(r.scheduled_at, geo)}</td>
                                   <td style={{ padding:'.6rem .85rem' }}><span className={pill(r.channel)}>{r.channel}</span></td>
                                   <td style={{ padding:'.6rem .85rem' }}><span className={pill(r.status==='scheduled'?'overdue':'active')}>{r.status}</span></td>
                                 </tr>
@@ -1376,11 +1400,11 @@ export default function DashboardPage() {
                     <div style={{ fontSize:'.78rem', color:'var(--muted)', marginBottom:'.75rem', lineHeight:1.6 }}>Opens WhatsApp or your messages app with the link ready to send from your own number.</div>
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                       <div style={{ display:'flex', flex:'1 1 200px' }}>
-                        <div style={{ background:'white', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'.75rem .8rem', fontSize:'.82rem', fontWeight:600, color:'var(--gold)', display:'flex', alignItems:'center' }}>+91</div>
-                        <input style={{ ...INP, borderRadius:'0 4px 4px 0' }} inputMode="numeric" maxLength={10} placeholder="Mobile number" value={checkinPhone} onChange={e=>setCheckinPhone(e.target.value.replace(/\D/g,'').slice(0,10))}/>
+                        <div style={{ background:'white', border:'1px solid var(--border)', borderRight:'none', borderRadius:'4px 0 0 4px', padding:'.75rem .8rem', fontSize:'.82rem', fontWeight:600, color:'var(--gold)', display:'flex', alignItems:'center' }}>+{geo.dialCode}</div>
+                        <input style={{ ...INP, borderRadius:'0 4px 4px 0', minWidth:0 }} inputMode="tel" maxLength={20} placeholder="Mobile number" value={checkinPhone} onChange={e=>setCheckinPhone(e.target.value.replace(/[^\d+()\-.\s]/g,''))}/>
                       </div>
-                      <a href={`https://wa.me/91${checkinPhone}?text=${encodeURIComponent(checkinMessage)}`} target="_blank" rel="noreferrer" className="sf-btn-primary" style={{ padding:'.75rem 1.1rem', fontSize:'.8rem', textDecoration:'none', opacity:checkinPhoneOk?1:.45, pointerEvents:checkinPhoneOk?'auto':'none' }}>WhatsApp</a>
-                      <a href={`sms:+91${checkinPhone}?body=${encodeURIComponent(checkinMessage)}`} className="sf-btn-ghost" style={{ padding:'.75rem 1.1rem', fontSize:'.8rem', textDecoration:'none', opacity:checkinPhoneOk?1:.45, pointerEvents:checkinPhoneOk?'auto':'none' }}>SMS</a>
+                      <a href={`https://wa.me/${checkinDial}?text=${encodeURIComponent(checkinMessage)}`} target="_blank" rel="noreferrer" className="sf-btn-primary" style={{ padding:'.75rem 1.1rem', fontSize:'.8rem', textDecoration:'none', opacity:checkinPhoneOk?1:.45, pointerEvents:checkinPhoneOk?'auto':'none' }}>WhatsApp</a>
+                      <a href={`sms:+${checkinDial}?body=${encodeURIComponent(checkinMessage)}`} className="sf-btn-ghost" style={{ padding:'.75rem 1.1rem', fontSize:'.8rem', textDecoration:'none', opacity:checkinPhoneOk?1:.45, pointerEvents:checkinPhoneOk?'auto':'none' }}>SMS</a>
                     </div>
                   </div>
 
@@ -1497,7 +1521,7 @@ export default function DashboardPage() {
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
                 <div>
-                  <label style={LBL}>Date and time *</label>
+                  <label style={LBL}>Date and time * ({geo.timezone.replace(/_/g, ' ')})</label>
                   <input style={INP} type="datetime-local" value={apptForm.startAt} onChange={e=>setApptForm(f=>({...f,startAt:e.target.value}))} required />
                 </div>
                 <div>
@@ -1568,17 +1592,21 @@ export default function DashboardPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={LBL}>Amount Charged (Rs.)</label>
+                  <label style={LBL}>Amount Charged ({geo.currency})</label>
                   <input style={INP} type="number" placeholder="e.g. 850" value={serviceForm.amountCharged} onChange={e=>setServiceForm(f=>({...f,amountCharged:e.target.value}))}/>
                 </div>
                 <div>
                   <label style={LBL}>Payment Method</label>
                   <select style={{ ...INP, cursor:'pointer' }} value={serviceForm.paymentMethod} onChange={e=>setServiceForm(f=>({...f,paymentMethod:e.target.value}))}>
                     <option value="">Select...</option>
-                    <option value="upi">UPI</option>
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>
-                    <option value="emi">EMI</option>
+                    <option value="bank_transfer">Bank transfer</option>
+                    <option value="wallet">Digital wallet</option>
+                    {geo.countryCode === 'IN' && <option value="upi">UPI</option>}
+                    <option value="cheque">Cheque</option>
+                    <option value="emi">Instalments / EMI</option>
+                    <option value="other">Other</option>
                   </select>
                 </div>
 
@@ -1605,7 +1633,7 @@ export default function DashboardPage() {
               {serviceForm.followUpDays && (
                 <div style={{ background:'rgba(200,168,75,.08)', border:'1px solid rgba(200,168,75,.2)', borderRadius:6, padding:'.85rem 1rem', fontSize:'.8rem', color:'var(--muted)' }}>
                   Reminder scheduled for{' '}
-                  <strong style={{ color:'var(--ink)' }}>{new Date(Date.now()+parseInt(serviceForm.followUpDays)*86400000).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</strong>
+                  <strong style={{ color:'var(--ink)' }}>{fmtDate(new Date(Date.now()+parseInt(serviceForm.followUpDays)*86400000).toISOString(), geo, { day:'numeric', month:'long', year:'numeric' })}</strong>
                   {' '}- <strong style={{ color:'var(--gold)' }}>{serviceForm.followUpDays} days</strong> from today
                 </div>
               )}

@@ -4,7 +4,7 @@ import Link from 'next/link';
 const SECTIONS = [
   {
     h: '1. Who We Are',
-    body: `Shih-Fu ("Shih-Fu", "we", "us") is a product of Shih-Fu Technologies Pvt. Ltd., a retention and customer-communication platform for service businesses in India (veterinary clinics, salons, auto repair garages, and similar). This policy explains what information we collect, why, and how it is handled, both for the businesses who sign up to use Shih-Fu ("Businesses") and the customers those Businesses serve ("Customers").`,
+    body: `Shih-Fu ("Shih-Fu", "we", "us") is a product of Shih-Fu Technologies Pvt. Ltd., a retention and customer-communication platform for service businesses around the world (veterinary clinics, salons, auto repair garages, and similar). This policy explains what information we collect, why, and how it is handled, both for the businesses who sign up to use Shih-Fu ("Businesses") and the customers those Businesses serve ("Customers").`,
   },
   {
     h: '2. Information We Collect',
@@ -33,7 +33,7 @@ Shih-Fu's use and transfer of information received from Google APIs to any other
     body: 'We share information only with the service providers needed to deliver messages you send, and only the minimum needed for that purpose:',
     list: [
       'Meta (WhatsApp Business Platform), to deliver WhatsApp messages.',
-      'Twilio, to deliver SMS messages, in compliance with India’s TRAI DLT regulations.',
+      'Twilio, to deliver SMS messages, in line with the telecom rules of each country (for example India’s TRAI DLT regulations).',
       'Your connected email provider (e.g. Google) or our email delivery provider, to deliver email messages.',
       'Our database and hosting infrastructure providers, to store and run the Service securely.',
     ],
@@ -43,23 +43,27 @@ Shih-Fu's use and transfer of information received from Google APIs to any other
     body: 'Passwords are stored using industry-standard one-way hashing and are never stored in plain text. Any OAuth tokens used to send email on your behalf are encrypted at rest. Access to customer data within Shih-Fu is isolated per business, one Business can never see another Business’s customers or messages.',
   },
   {
-    h: '7. Data Retention',
+    h: '7. Where Data Is Processed',
+    body: 'Shih-Fu is operated from India and its database and servers are hosted in Singapore. If you or your customers are in another country, your data is transferred to and processed in those countries. Businesses are responsible for having a lawful basis under their own law for entering their customers’ details into Shih-Fu and for this transfer.',
+  },
+  {
+    h: '8. Data Retention',
     body: 'We retain account and customer data for as long as your account is active. If you remove a customer record, we anonymise their personal identifiers while preserving anonymised service history for your own records. You may request full deletion of your account and associated data at any time by writing to us.',
   },
   {
-    h: '8. Your Rights',
-    body: 'You may access, correct, export, or request deletion of the personal data associated with your account, and Businesses are responsible for honouring the same rights for their own Customers under India’s Digital Personal Data Protection Act, 2023 and other applicable law. To exercise these rights or raise a grievance, contact our Grievance Officer at the email below.',
+    h: '9. Your Rights',
+    body: 'You may access, correct, export, or request deletion of the personal data associated with your account, and Businesses are responsible for honouring the same rights for their own Customers under the data protection law that applies to them, such as the GDPR and UK GDPR, India’s Digital Personal Data Protection Act, 2023, California’s CCPA and CPRA, or Australia’s Privacy Act. To exercise these rights or raise a grievance, contact our Grievance Officer at the email below.',
   },
   {
-    h: '9. Children’s Privacy',
+    h: '10. Children’s Privacy',
     body: 'Shih-Fu is a business-to-business service and is not directed at, or knowingly used by, children.',
   },
   {
-    h: '10. Changes to This Policy',
+    h: '11. Changes to This Policy',
     body: 'We may update this policy from time to time. Material changes will be reflected by an updated "Last updated" date below, and significant changes will be communicated to account owners directly.',
   },
   {
-    h: '11. Contact Us',
+    h: '12. Contact Us',
     body: 'For any privacy question, request, or grievance, write to us at shihfu.ai@gmail.com.',
   },
 ];
@@ -83,7 +87,7 @@ export default function PrivacyPolicyPage() {
           <h1 style={{ fontFamily:"'Playfair Display',serif", fontSize:'2.6rem', fontWeight:900, color:'var(--ink)', lineHeight:1.1, letterSpacing:'-0.02em', marginBottom:'1rem' }}>
             Privacy <em style={{ fontStyle:'italic', color:'var(--gold)' }}>Policy</em>
           </h1>
-          <p style={{ fontSize:'0.85rem', color:'var(--muted)' }}>Last updated: 6 October 2026</p>
+          <p style={{ fontSize:'0.85rem', color:'var(--muted)' }}>Last updated: 13 October 2026</p>
         </div>
 
         {SECTIONS.map((s, i) => (

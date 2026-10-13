@@ -48,7 +48,7 @@ export default function LoginPage() {
           Shih<span style={{ color:'var(--gold)' }}>-Fu</span>
         </Link>
         <div style={{ fontSize:'.82rem', color:'var(--muted)' }}>
-          India&apos;s retention-first CRM for service businesses
+          The retention-first CRM for service businesses worldwide
         </div>
       </nav>
 
@@ -77,7 +77,7 @@ export default function LoginPage() {
             <form onSubmit={handleSignIn} style={{ display:'flex', flexDirection:'column', gap:'1.1rem' }}>
               <div>
                 <label style={lbl}>Business Email</label>
-                <input style={inp} type="email" required placeholder="hello@yourshop.in"
+                <input style={inp} type="email" required placeholder="hello@yourbusiness.com"
                   value={signIn.email} onChange={e=>setSignIn(f=>({...f,email:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
               </div>
               <div>

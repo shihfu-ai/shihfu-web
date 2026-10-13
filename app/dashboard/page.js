@@ -282,6 +282,7 @@ export default function DashboardPage() {
 
   // Delete
   const [showDelete, setShowDelete]       = useState(false);
+  const [eraseConfirm, setEraseConfirm]     = useState(false);
   const [deletingCustomer, setDeletingCustomer] = useState(null);
 
   // Customer Profile (view)
@@ -560,7 +561,18 @@ export default function DashboardPage() {
   }
 
   // ── Delete ─────────────────────────────────────────────────────
-  function openDelete(c) { setDeletingCustomer(c); setShowDelete(true); }
+  function openDelete(c) { setDeletingCustomer(c); setEraseConfirm(false); setShowDelete(true); }
+
+  async function handleErase() {
+    try {
+      await api.deleteCustomer(deletingCustomer.id);
+      showToast(`${deletingCustomer.name} and all their data were deleted`);
+      setShowDelete(false);
+      setDeletingCustomer(null);
+      setEraseConfirm(false);
+      await loadData();
+    } catch (err) { showToast(err.message || 'Could not delete','error'); }
+  }
 
   async function handleDelete() {
     try {
@@ -1349,13 +1361,30 @@ export default function DashboardPage() {
               <p style={{ fontSize:'.9rem', color:'var(--muted)', lineHeight:1.7, marginBottom:'.75rem' }}>
                 Are you sure you want to remove <strong style={{ color:'var(--ink)' }}>{deletingCustomer.name}</strong>?
               </p>
-              <p style={{ fontSize:'.8rem', color:'var(--muted)', lineHeight:1.6, background:'rgba(196,83,42,.06)', border:'1px solid rgba(196,83,42,.15)', borderRadius:6, padding:'.75rem 1rem' }}>
-                Service history is preserved. Future reminders will be stopped.
-              </p>
-              <div style={{ display:'flex', gap:8, marginTop:'1.5rem' }}>
-                <button className="sf-btn-ghost" style={{ flex:1, padding:'.8rem' }} onClick={() => setShowDelete(false)}>Cancel</button>
-                <button onClick={handleDelete} style={{ flex:1, padding:'.8rem', background:'var(--rust)', color:'white', border:'none', borderRadius:4, fontSize:'.875rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>Yes, Remove</button>
-              </div>
+              {!eraseConfirm ? (
+                <>
+                  <p style={{ fontSize:'.8rem', color:'var(--muted)', lineHeight:1.6, background:'rgba(196,83,42,.06)', border:'1px solid rgba(196,83,42,.15)', borderRadius:6, padding:'.75rem 1rem' }}>
+                    Service history is preserved. Future reminders will be stopped. You can restore them later by adding the same mobile number again.
+                  </p>
+                  <div style={{ display:'flex', gap:8, marginTop:'1.5rem' }}>
+                    <button className="sf-btn-ghost" style={{ flex:1, padding:'.8rem' }} onClick={() => setShowDelete(false)}>Cancel</button>
+                    <button onClick={handleDelete} style={{ flex:1, padding:'.8rem', background:'var(--rust)', color:'white', border:'none', borderRadius:4, fontSize:'.875rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>Yes, Remove</button>
+                  </div>
+                  <button onClick={() => setEraseConfirm(true)} style={{ display:'block', width:'100%', marginTop:'1rem', background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:'.78rem', fontFamily:'inherit', textDecoration:'underline' }}>
+                    Customer asked to be erased? Delete permanently instead
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p style={{ fontSize:'.8rem', color:'var(--ink)', lineHeight:1.6, background:'rgba(196,83,42,.08)', border:'1px solid rgba(196,83,42,.3)', borderRadius:6, padding:'.75rem 1rem' }}>
+                    <strong>This cannot be undone.</strong> It permanently deletes {deletingCustomer.name} and everything tied to them: their pets or vehicles, service history, reminders, appointments, booking links and message history.
+                  </p>
+                  <div style={{ display:'flex', gap:8, marginTop:'1.5rem' }}>
+                    <button className="sf-btn-ghost" style={{ flex:1, padding:'.8rem' }} onClick={() => setEraseConfirm(false)}>Back</button>
+                    <button onClick={handleErase} style={{ flex:1, padding:'.8rem', background:'var(--rust)', color:'white', border:'none', borderRadius:4, fontSize:'.875rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>Delete permanently</button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

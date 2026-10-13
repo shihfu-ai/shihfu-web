@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { getStaff, isLoggedIn, api } from '../../../lib/api';
+import { getStaff, isLoggedIn, api, clearAuth } from '../../../lib/api';
 import { getGeo, DEFAULT_GEO, checkPhone, phonePlaceholder, timezoneLabel } from '../../../lib/geo';
 import { APPOINTMENT_LENGTHS, lengthLabel, DAY_NAMES, toMin, clock } from '../../../lib/booking-options';
 
@@ -32,6 +32,12 @@ function SettingsPageInner() {
   const [pwForm, setPwForm]     = useState({ current:'', newPw:'', confirm:'' });
   const [pwError, setPwError]   = useState('');
   const [savingPw, setSavingPw] = useState(false);
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
+
+  // Delete account
+  const [delForm, setDelForm]   = useState({ confirmName:'', password:'' });
+  const [delError, setDelError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   // Email connection (Connect Gmail)
   const [emailConnection, setEmailConnection]     = useState(null);
@@ -177,6 +183,34 @@ function SettingsPageInner() {
     } finally { setSavingProfile(false); }
   }
 
+  async function handleDeleteAccount(e) {
+    e.preventDefault();
+    setDelError('');
+    if (!delForm.confirmName.trim() || !delForm.password) { setDelError('Type your business name and your password'); return; }
+    if (!window.confirm('Permanently delete this account and all of its data? This cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      await api.deleteAccount({ password: delForm.password, confirmName: delForm.confirmName.trim() });
+      clearAuth();
+      router.replace('/');
+    } catch (err) {
+      setDelError(err.message || 'Could not delete the account');
+      setDeleting(false);
+    }
+  }
+
+  async function handleLogoutAll() {
+    if (!window.confirm('Sign out of every other device where you are signed in? This device stays signed in.')) return;
+    setLoggingOutAll(true);
+    try {
+      const res = await api.logoutAll();
+      if (res.data?.accessToken) localStorage.setItem('shihfu_token', res.data.accessToken);
+      showToast('All other devices have been signed out.');
+    } catch (err) {
+      showToast(err.message || 'Could not sign out other devices','error');
+    } finally { setLoggingOutAll(false); }
+  }
+
   async function handleChangePassword(e) {
     e.preventDefault();
     setPwError('');
@@ -186,9 +220,11 @@ function SettingsPageInner() {
     if (pwForm.newPw === pwForm.current) { setPwError('New password must be different from your current password'); return; }
     setSavingPw(true);
     try {
-      await api.changePassword({ currentPassword: pwForm.current, newPassword: pwForm.newPw });
+      const res = await api.changePassword({ currentPassword: pwForm.current, newPassword: pwForm.newPw });
+      // Every other device was signed out. This one gets a fresh token so you stay signed in.
+      if (res.data?.accessToken) localStorage.setItem('shihfu_token', res.data.accessToken);
       setPwForm({ current:'', newPw:'', confirm:'' });
-      showToast('Password updated');
+      showToast('Password updated. Other devices have been signed out.');
     } catch (err) {
       setPwError(err.message || 'Could not update password');
     } finally { setSavingPw(false); }
@@ -279,6 +315,32 @@ function SettingsPageInner() {
           </form>
         )}
 
+        {activeTab==='profile' && staff?.role === 'owner' && (
+          <form onSubmit={handleDeleteAccount} style={{ ...card, marginTop:'2.5rem', borderColor:'rgba(196,83,42,.3)' }}>
+            <div style={{ ...sectionTitle, color:'var(--rust)' }}>Delete Account</div>
+            <div style={sectionSub}>
+              Permanently deletes <strong>{staff?.businessName}</strong> and everything in it: customers, service history, reminders, appointments, booking links, message history and your Gmail connection. This cannot be undone. If you only want to remove one customer, use their row in Customers instead.
+            </div>
+            {delError && (
+              <div style={{ background:'rgba(196,83,42,.08)', border:'1px solid rgba(196,83,42,.2)', borderRadius:4, padding:'.75rem 1rem', marginBottom:'1.25rem', fontSize:'.82rem', color:'var(--rust)' }}>{delError}</div>
+            )}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.25rem', marginBottom:'1.25rem' }}>
+              <div>
+                <label style={lbl}>Type your business name</label>
+                <input style={inp} value={delForm.confirmName} onChange={e=>setDelForm(f=>({...f,confirmName:e.target.value}))} onFocus={onFocus} onBlur={onBlur} placeholder={staff?.businessName}/>
+              </div>
+              <div>
+                <label style={lbl}>Your password</label>
+                <input style={inp} type="password" autoComplete="current-password" value={delForm.password} onChange={e=>setDelForm(f=>({...f,password:e.target.value}))} onFocus={onFocus} onBlur={onBlur}/>
+              </div>
+            </div>
+            <button type="submit" disabled={deleting}
+              style={{ padding:'0.8rem 1.75rem', fontSize:'0.85rem', background:'var(--rust)', border:'none', color:'white', borderRadius:4, cursor:'pointer', fontFamily:'inherit', fontWeight:600, opacity:deleting?0.6:1 }}>
+              {deleting ? 'Deleting...' : 'Delete my account permanently'}
+            </button>
+          </form>
+        )}
+
         {/* ── EMAIL ── */}
         {activeTab==='email' && (
           <div style={card}>
@@ -286,6 +348,19 @@ function SettingsPageInner() {
             <div style={sectionSub}>
               Reminder and promo emails are sent from your own Gmail address, in your business&apos;s name, and appear in your Gmail Sent folder.
               Shih-Fu only gets permission to send - never to read your inbox or your customers&apos; replies. Email cannot be sent until you connect a Gmail account.
+            </div>
+
+            <div style={{ background:'var(--warm)', border:'1px solid var(--border)', borderRadius:6, padding:'1rem 1.15rem', marginBottom:'1.25rem', fontSize:'0.82rem', color:'var(--muted)', lineHeight:1.7 }}>
+              <div style={{ fontWeight:600, color:'var(--ink)', marginBottom:'0.35rem' }}>What Google will ask you to allow</div>
+              <ul style={{ margin:0, paddingLeft:'1.1rem' }}>
+                <li><strong style={{ color:'var(--ink)' }}>Send email on your behalf.</strong> Only the reminders and promotions you choose to send to your customers.</li>
+                <li><strong style={{ color:'var(--ink)' }}>See your email address.</strong> So we can show which account is connected and use it as the sender.</li>
+              </ul>
+              <div style={{ marginTop:'0.5rem' }}>
+                We do not get access to read, search or delete anything in your mailbox, and we use this permission for nothing else.
+                Your access token is stored encrypted, and you can disconnect at any time here or in your Google Account. Details are in our{' '}
+                <Link href="/privacy#google-user-data" style={{ color:'var(--gold)', fontWeight:600 }}>Privacy Policy</Link>.
+              </div>
             </div>
 
             {emailConnLoading ? (
@@ -410,7 +485,7 @@ function SettingsPageInner() {
           <form onSubmit={handleChangePassword}>
             <div style={card}>
               <div style={sectionTitle}>Change Password</div>
-              <div style={sectionSub}>Enter your current password, then choose a new one of at least 8 characters.</div>
+              <div style={sectionSub}>Enter your current password, then choose a new one of at least 8 characters. Changing it signs you out everywhere else.</div>
               {pwError && (
                 <div style={{ background:'rgba(196,83,42,.08)', border:'1px solid rgba(196,83,42,.2)', borderRadius:4, padding:'.75rem 1rem', marginBottom:'1.25rem', fontSize:'.82rem', color:'var(--rust)' }}>{pwError}</div>
               )}
@@ -433,6 +508,19 @@ function SettingsPageInner() {
               {savingPw ? 'Updating...' : 'Update Password'}
             </button>
           </form>
+        )}
+
+        {activeTab==='password' && (
+          <div style={{ ...card, marginTop:'1.25rem' }}>
+            <div style={sectionTitle}>Signed in on other devices?</div>
+            <div style={sectionSub}>
+              If you used a shared computer, lost a phone or just want to be sure, sign out of every other device. You stay signed in here, and anyone else has to sign in again with the password.
+            </div>
+            <button type="button" onClick={handleLogoutAll} disabled={loggingOutAll}
+              style={{ padding:'0.7rem 1.4rem', fontSize:'0.85rem', background:'transparent', border:'1px solid rgba(196,83,42,0.3)', color:'var(--rust)', borderRadius:4, cursor:'pointer', fontFamily:'inherit', fontWeight:500, opacity:loggingOutAll?0.6:1 }}>
+              {loggingOutAll ? 'Signing out...' : 'Sign out of all other devices'}
+            </button>
+          </div>
         )}
       </div>
 

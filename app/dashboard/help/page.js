@@ -70,7 +70,7 @@ const FAQS = [
     items: [
       {
         q: 'What does removing a customer do?',
-        a: 'Removing a customer takes them off your list and cancels their upcoming reminders. Their service history is kept. If you add the same mobile number again later, the customer is restored with their history.',
+        a: 'Removing a customer takes them off your list and cancels their upcoming reminders. Their service history is kept. If you add the same mobile number again later, the customer is restored with their history. If a customer asks to be erased, choose Remove, then "Delete permanently instead": that deletes everything about them for good.',
       },
       {
         q: 'Can one customer have multiple pets or vehicles?',

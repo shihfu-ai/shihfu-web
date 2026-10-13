@@ -18,6 +18,7 @@ export default function SignupPage() {
   const [error, setError]     = useState('');
   const [emailExists, setEmailExists] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [agreed, setAgreed]   = useState(false);
   // Country names come from the runtime's locale data, which differs a little
   // between the server and the browser, so the list is only drawn in the browser.
   const [mounted, setMounted] = useState(false);
@@ -84,6 +85,7 @@ export default function SignupPage() {
 
   async function submit() {
     setError('');
+    if (!agreed) { setError('Please agree to the Terms of Service and Privacy Policy to continue'); return; }
     setEmailExists(false);
     setLoading(true);
     try {
@@ -99,6 +101,7 @@ export default function SignupPage() {
         city:          form.city || undefined,
         state:         form.state || undefined,
         vertical:      resolvedVertical(),
+        acceptedTerms: true,
         booking:       hours.skip ? undefined : {
           days: hours.days, open: hours.open, close: hours.close,
           slotMinutes: Number(hours.slotMinutes), capacity: Number(hours.capacity),
@@ -401,6 +404,14 @@ export default function SignupPage() {
                 <div style={{ marginTop:'1.25rem', background:'rgba(200,168,75,.08)', border:'1px solid rgba(200,168,75,.2)', borderRadius:6, padding:'.85rem 1rem', fontSize:'.78rem', color:'var(--muted)', lineHeight:1.65 }}>
                   Your Add Customer form and service types will be tailored specifically for <strong style={{ color:'var(--gold)' }}>{selectedVerticalLabel()}</strong>.
                 </div>
+                <label style={{ display:'flex', alignItems:'flex-start', gap:'.65rem', marginTop:'1.25rem', fontSize:'.82rem', color:'var(--ink)', lineHeight:1.6, cursor:'pointer' }}>
+                  <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} style={{ width:17, height:17, marginTop:2, accentColor:'var(--gold)', flexShrink:0 }}/>
+                  <span>
+                    I have read and agree to the <Link href="/terms" target="_blank" style={{ color:'var(--gold)', fontWeight:600 }}>Terms of Service</Link> and
+                    {' '}<Link href="/privacy" target="_blank" style={{ color:'var(--gold)', fontWeight:600 }}>Privacy Policy</Link>,
+                    and I will only message customers who have agreed to hear from me.
+                  </span>
+                </label>
               </div>
             )}
 
@@ -412,7 +423,7 @@ export default function SignupPage() {
               }
               {step < STEPS.length - 1
                 ? <button onClick={next} className="sf-btn-primary">Continue</button>
-                : <button onClick={submit} disabled={loading} className="sf-btn-primary" style={{ opacity:loading?.7:1 }}>
+                : <button onClick={submit} disabled={loading || !agreed} className="sf-btn-primary" style={{ opacity:(loading || !agreed)?.6:1 }}>
                     {loading ? 'Launching...' : 'Launch My Business'}
                   </button>
               }

@@ -305,7 +305,7 @@ export default function LandingPage() {
           ))}
         </div>
         <div style={{ fontSize:'.75rem', color:'rgba(245,240,232,.25)' }}>
-          2026 Shih-Fu Technologies Pvt. Ltd.
+          2026 Shih-Fu
         </div>
       </footer>
     </div>

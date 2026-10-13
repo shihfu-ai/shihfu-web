@@ -15,7 +15,6 @@ export default function LandingPage() {
   return (
     <div style={{ background:'#f5f0e8', color:'#0d0d0d', overflowX:'hidden' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&display=swap');
         :root { --ink:#0d0d0d; --cream:#f5f0e8; --warm:#f0e9d6; --gold:#c8a84b; --muted:#6b6456; --border:rgba(13,13,13,0.12); --rust:#c4532a; }
         .fade-up { opacity:0; transform:translateY(28px); transition:opacity .7s ease,transform .7s ease; }
         .fade-up.visible { opacity:1; transform:translateY(0); }
